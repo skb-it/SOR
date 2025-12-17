@@ -13,4 +13,4 @@ registration: registration.c common.h
 	gcc -Wall -g -pthread registration.c -o registration
 
 clean:
-	rm -f main patient doctor registration
+	rm -f main patient doctor registration 
