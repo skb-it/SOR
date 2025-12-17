@@ -46,7 +46,7 @@ int main(){
 
     //MESSAGE QUQUE - DOCTOR
     key_t key_msg_doc = ftok(FTOK_PATH, ID_MSG_DOCTOR);
-    if(key_msg_reg == -1){
+    if(key_msg_doc == -1){
         perror("[main.c] error: key_msg_doc");
         exit(1);
     }

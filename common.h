@@ -19,9 +19,18 @@
 
 #define ID_SEM_WAITING_ROOM 'S'
 #define ID_MSG_REGISTRATION 'R'
+#define ID_MSG_PATIENT      'P'
 #define ID_MSG_DOCTOR       'D'
 #define ID_SHM              'M'
 
+
 #define SHM_SIZE sizeof(int)
+
+struct Message {
+    long mtype;
+    pid_t patient_id;
+    int age;
+    char description[100];
+};
 
 #endif

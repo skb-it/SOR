@@ -1,11 +1,5 @@
 #include "common.h"
 
-typedef struct {
-    long mtype;
-    pid_t patientID;
-    int age;
-} PatientMsg;
-
 int main(){
 
     key_t key_msg_reg = ftok(FTOK_PATH, ID_MSG_REGISTRATION);
@@ -15,17 +9,19 @@ int main(){
         exit(1);
     }
 
-    PatientMsg reg_msg;
-    size_t size = sizeof(PatientMsg) - sizeof(long);
+    struct Message msg_reg;
+    size_t size = sizeof(msg_reg) - sizeof(long);
 
     while(1){
         
-        int msgrcv_result = msgrcv(msg_reg_id, &reg_msg, size, 0 , 0);
+        int msgrcv_result = msgrcv(msg_reg_id, &msg_reg,size, 0 , 0);
         if(msgrcv_result  == -1){
             perror("[registration.c] error: msgrcv");
             exit(1);
         }
 
-        printf("|REGISTRATION| A patient came! PID: %d, age: %d\n", reg_msg.patientID, reg_msg.age);
+        printf("|REGISTRATION| A patient came! PID: %d, age: %d\n", msg_reg.patient_id, msg_reg.age);
     }
+
+    return 0;
 }
