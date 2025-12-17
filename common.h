@@ -24,11 +24,4 @@
 
 #define SHM_SIZE sizeof(int)
 
-typedef struct {
-    long mtype;
-    pid_t patientID;
-    int age;
-} PatientMsg;
-
-
 #endif

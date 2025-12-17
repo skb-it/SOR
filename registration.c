@@ -1,5 +1,11 @@
 #include "common.h"
 
+typedef struct {
+    long mtype;
+    pid_t patientID;
+    int age;
+} PatientMsg;
+
 int main(){
 
     key_t key_msg_reg = ftok(FTOK_PATH, ID_MSG_REGISTRATION);
