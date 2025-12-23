@@ -90,9 +90,37 @@ int main(){
     printf("-------------------------------------------------\n\n");
 
     printf("-----Press CTRL+C to end simulation and clean----\n\n");
+    
+    
 
     while(1){
         sleep(1);
+    }
+
+    //DELETING MESSAGE QUEUES 
+    int msg_reg_del = msgctl(msg_reg_id, IPC_RMID, NULL);
+    if(msg_reg_del == -1){
+        perror("[main.c] error: msg_reg_del");
+        exit(1);
+    }
+    int msg_doc_del = msgctl(msg_doc_id, IPC_RMID, NULL);
+    if(msg_doc_del == -1){
+        perror("[main.c] error: msg_doc_del");
+        exit(1);
+    }
+
+    //DELETING SEMAPHORE
+    int sem_del_waiting_room = semctl(sem_id_waiting_room, IPC_RMID, 0);
+    if(sem_del_waiting_room == -1){
+        perror("[main.c] error: sem_del_waiting_room");
+        exit(1);
+    }
+
+    //DELETING SHARED MEMORY
+    int shm_delete = shmctl(shm_id,IPC_RMID,0);
+    if(shm_delete == -1){
+        perror("[main.c] error: shm_delete");
+        exit(1);
     }
 
     return 0;

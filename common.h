@@ -23,6 +23,8 @@
 #define ID_MSG_DOCTOR       'D'
 #define ID_SHM              'M'
 
+#
+
 
 #define SHM_SIZE sizeof(int)
 
