@@ -11,20 +11,33 @@
 #include <sys/shm.h>
 #include <errno.h>
 
+#define COMMON 2
+#define VIP    1
+
+
 #define TRIAGE_RED    1
 #define TRIAGE_YELLOW 2
 #define TRIAGE_GREEN  3
+#define SENT_HOME     4
 
 #define FTOK_PATH "."
 
 #define ID_SEM_WAITING_ROOM 'S'
 #define ID_MSG_REGISTRATION 'R'
-#define ID_MSG_PATIENT      'P'
-#define ID_MSG_DOCTOR       'D'
+#define ID_MSG_PAT_REG      'P'
+#define ID_MSG_REG_DOC      'R'
 #define ID_SHM              'M'
 
-#
+#define DOC_CARDIOLOGIST  'C'
+#define DOC_NEUROLOGIST   'N'
+#define DOC_EYE_DOC       'E'
+#define DOC_LARYNGOLOGIST 'L'
+#define DOC_SURGEON       'S'
+#define DOC_PEDIATRICIAN  'P'
 
+#define HOME     0
+#define WARD     1
+#define OTHER    2
 
 #define SHM_SIZE sizeof(int)
 
@@ -32,7 +45,9 @@ struct Message {
     long mtype;
     pid_t patient_id;
     int age;
-    char description[100];
+    int is_vip;     
 };
+
+
 
 #endif
