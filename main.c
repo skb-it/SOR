@@ -6,7 +6,7 @@ int msg_id_pat_reg, msg_id_reg_doc, sem_id_waiting_room, shm_id;
 pid_t reg1_pid = 0, reg2_pid = 0, triage_pid = 0;
 
 void handle_sigint(int sig) {
-    printf("\n[DYREKTOR] Rozpoczynam sprzątanie i kończenie symulacji...\n");
+    printf("\n|DIRECTOR| Closing hospital...\n");
     
     if(reg1_pid > 0) kill(reg1_pid, SIGTERM);
     if(reg2_pid > 0) kill(reg2_pid, SIGTERM);
@@ -17,7 +17,7 @@ void handle_sigint(int sig) {
     semctl(sem_id_waiting_room, 0, IPC_RMID);
     shmctl(shm_id, IPC_RMID, NULL);
     
-    printf("[DYREKTOR] Symulacja zakończona.\n");
+    printf("[|DIRECTOR| Hospital closed!\n");
     exit(0);
 }
 
@@ -25,7 +25,7 @@ int main() {
     signal(SIGINT, handle_sigint);
 
     int N, K;
-    printf("Podaj pojemność poczekalni (N): ");
+    printf("Set the size of waiting room (N): ");
     scanf("%d", &N);
     K = N / 2;
 
@@ -42,29 +42,27 @@ int main() {
     reg1_pid = fork();
     if (reg1_pid == 0) {
         execl("./registration", "registration", "1", NULL);
-        perror("Błąd execl registration");
+        perror("[main.c] error: execl registration");
         exit(1);
     }
 
     triage_pid = fork();
     if (triage_pid == 0) {
         execl("./doctor", "doctor", "triage", NULL);
-        perror("Błąd execl doctor triage");
+        perror("[main.c] error: execl doctor triage");
         exit(1);
     }
 
-    printf("[DYREKTOR] Symulacja działa. Monitorowanie kolejek...\n");
-
-    // 5. PĘTLA MONITORUJĄCA (Dynamiczne okienka) 
+    printf("|DIRECTOR| Hospital works...\n");
+ 
     struct msqid_ds buf;
     while(1) {
         sleep(2);
-        msgctl(msg_id_pat_reg, IPC_STAT, &buf); // Sprawdzanie stanu kolejki
+        msgctl(msg_id_pat_reg, IPC_STAT, &buf);
         int patients_in_queue = buf.msg_qnum;
 
-        // Logika otwierania drugiego okienka 
         if (patients_in_queue > K && reg2_pid == 0) {
-            printf("[DYREKTOR] Kolejka > K (%d). Otwieram drugie okienko.\n", patients_in_queue);
+            printf("|DIRECTOR| QUEUE > K (%d). Opening second registration.\n", patients_in_queue);
             reg2_pid = fork();
             if (reg2_pid == 0) {
                 execl("./registration", "registration", "2", NULL);
@@ -72,9 +70,8 @@ int main() {
             }
         }
 
-        // Logika zamykania drugiego okienka [cite: 318]
         if (patients_in_queue < N/3 && reg2_pid > 0) {
-            printf("[DYREKTOR] Kolejka < N/3 (%d). Zamykam drugie okienko.\n", patients_in_queue);
+            printf("|DIRECTOR| Queue < N/3 (%d). Closing second registration.\n", patients_in_queue);
             kill(reg2_pid, SIGTERM);
             reg2_pid = 0;
         }
