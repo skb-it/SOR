@@ -1,16 +1,17 @@
 #include "common.h"
+#include "errors.h"
 
 int main(){
     printf("|PATIENT %d| Creating...\n", getpid());
 
     key_t key_msg_pat_reg = ftok(FTOK_PATH, ID_MSG_PAT_REG);
+    if(key_msg_pat_reg == -1){
+        report_error("[patient.c] error: key_msg_pat_reg", 1);
+    }
     int msg_id_pat_reg = msgget(key_msg_pat_reg, 0600 | IPC_CREAT);
     if( msg_id_pat_reg == -1){
-        perror("[patient.c] error: msg_id_pat_reg");
-        exit(1);
+        report_error("[patient.c] error: msg_id_pat_reg", 1);
     }
-
-    
 
     while(1){
         struct Message msg_pat;
@@ -28,8 +29,7 @@ int main(){
         size_t size = sizeof(msg_pat) - sizeof(long);
         int msg_send_pat_reg = msgsnd(msg_id_pat_reg, &msg_pat, size, 0);
         if(msg_send_pat_reg == -1){
-            perror("[patient.c] error: msg_send_pat_reg");
-            exit(1);
+            report_error("[patient.c] error: msg_send_pat_reg", 1);
         }
 
         printf("|PATIENT %d| Data provided to registration!\n", getpid());
