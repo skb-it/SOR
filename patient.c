@@ -4,6 +4,8 @@
 int main(){
     printf("|PATIENT %d| Creating...\n", getpid());
 
+    signal(SIGCHLD, SIG_IGN);
+
     key_t key_msg_pat_reg = ftok(FTOK_PATH, ID_MSG_PAT_REG);
     if(key_msg_pat_reg == -1){
         report_error("[patient.c] error: key_msg_pat_reg", 1);
@@ -13,27 +15,60 @@ int main(){
         report_error("[patient.c] error: msg_id_pat_reg", 1);
     }
 
+    key_t key_sem = ftok(FTOK_PATH, ID_SEM_WAITING_ROOM);
+    if(key_sem == -1){
+        report_error("[patient.c] error: key_sem", 1);
+    }
+    int sem_id = semget(key_sem, 0, 0);
+    if(sem_id == -1){
+        report_error("[patient.c] error: sem_id", 1);
+    }
+
     while(1){
-        struct Message msg_pat;
-        msg_pat.patient_id = getpid();
-        msg_pat.age = rand() % (116 + 1 - 0) + 0;
-        if (rand() % 100 < 5) {
-            msg_pat.mtype = 1;
-            msg_pat.is_vip = VIP;
-        } 
-        else {
-            msg_pat.mtype = 2;
-            msg_pat.is_vip = COMMON;
-        }
+        pid_t pid = fork();
 
-        size_t size = sizeof(msg_pat) - sizeof(long);
-        int msg_send_pat_reg = msgsnd(msg_id_pat_reg, &msg_pat, size, 0);
-        if(msg_send_pat_reg == -1){
-            report_error("[patient.c] error: msg_send_pat_reg", 1);
-        }
+        if(pid == 0){
 
-        printf("|PATIENT %d| Data provided to registration!\n", getpid());
-        sleep(2);
+            printf("|PATIENT %d| Arrived at hospital, standing outside...\n", getpid());
+
+            struct sembuf enter_op = {0, -1, 0};
+            int sem_op = semop(sem_id, &enter_op, 1);
+            if(sem_op == -1){
+                report_error("[patient.c] error: sem_op", 1);
+            }
+            
+            srand(getpid() * time(NULL));
+            struct Message msg_pat;
+            msg_pat.patient_id = getpid();
+            
+            msg_pat.age = rand() % (116 + 1 - 0) + 0;
+            if (msg_pat.age < 18) {
+                msg_pat.is_guardian = 1;
+            } else {
+                msg_pat.is_guardian = 0;
+            }
+
+            if (rand() % 100 < 20) {
+                msg_pat.mtype = VIP;
+                msg_pat.is_vip = 1;
+            } 
+            else {
+                msg_pat.mtype = COMMON;
+                msg_pat.is_vip = 0;
+            }
+
+            size_t size = sizeof(msg_pat) - sizeof(long);
+            int msg_send_pat_reg = msgsnd(msg_id_pat_reg, &msg_pat, size, 0);
+            if(msg_send_pat_reg == -1){
+                report_error("[patient.c] error: msg_send_pat_reg", 1);
+            }
+
+            printf("|PATIENT %d| Entered waiting room.", getpid());
+            
+            sleep(60);
+        
+            exit(0);
+        }
     }
     return 0;
 

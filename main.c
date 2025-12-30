@@ -1,4 +1,5 @@
 #include "common.h"
+#include "errors.h"
 #include <signal.h>
 #include <sys/wait.h>
 
@@ -24,21 +25,28 @@ void handle_sigint(int sig) {
 int main() {
     signal(SIGINT, handle_sigint);
 
-    int N, K;
+    int N = 0;
     printf("Set the size of waiting room (N): ");
     scanf("%d", &N);
-    K = N / 2;
+    
+    while(N <= 0){
+        printf("\nWrong number, N must be more than 0!\n");
+        printf("Set the size of waiting room (N): ");
+        scanf("%d", &N);
+    }
 
-    key_t key_p = ftok(FTOK_PATH, ID_MSG_PAT_REG);
-    msg_id_pat_reg = msgget(key_p, 0600 | IPC_CREAT);
 
-    key_t key_d = ftok(FTOK_PATH, ID_MSG_REG_DOC);
-    msg_id_reg_doc = msgget(key_d, 0600 | IPC_CREAT);
+
+    int K = N / 2;
 
     key_t key_s = ftok(FTOK_PATH, ID_SEM_WAITING_ROOM);
+    if(key_s == -1){
+        report_error("[main.c] error: key_s", 1);
+    }
+
     sem_id_waiting_room = semget(key_s, 1, 0600 | IPC_CREAT);
     semctl(sem_id_waiting_room, 0, SETVAL, N); 
-
+    
     reg1_pid = fork();
     if (reg1_pid == 0) {
         execl("./registration", "registration", "1", NULL);
@@ -46,6 +54,7 @@ int main() {
         exit(1);
     }
 
+    
     triage_pid = fork();
     if (triage_pid == 0) {
         execl("./doctor", "doctor", "triage", NULL);

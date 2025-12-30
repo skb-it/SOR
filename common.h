@@ -4,11 +4,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <signal.h>
+#include <time.h>
+#include <string.h>
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
 #include <sys/sem.h>
 #include <sys/shm.h>
+#include <sys/wait.h>
+
 #include <errno.h>
 
 #define COMMON 2
@@ -23,7 +28,7 @@
 #define FTOK_PATH "."
 
 #define ID_SEM_WAITING_ROOM 'S'
-#define ID_MSG_PAT_REG      'P'
+#define ID_SHM_PAT_REG      'P'
 #define ID_MSG_REG_DOC      'R'
 
 #define DOC_CARDIOLOGIST  'C'

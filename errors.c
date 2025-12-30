@@ -2,7 +2,7 @@
 #include "common.h"
 
 
-void report_errors(const char* msg, int critical){
+void report_error(const char* msg, int critical){
     perror(msg);
 
     FILE *log_file = fopen("log_sor.txt", "a");
