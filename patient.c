@@ -7,7 +7,7 @@ void fill_pat_data(struct MsgBuffer *buf, int age){
     buf->patient_id = getpid();
 
     //GETTING PATIENT AGE
-    buf->age;
+    buf->age ;
     
     //DRAWING - VIP(CHANCE OF 15%) OR COMMON(CHANCE OF 85%)
     if ((rand() % 100) < 15) buf->mtype = VIP;
@@ -76,7 +76,7 @@ int main(){
     if(msgsnd_pat_reg == -1) report_error("[patient.c] error: msgsnd_pat_reg", 1);
 
     
-    
+
 
 
 

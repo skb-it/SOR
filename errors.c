@@ -15,7 +15,5 @@ void report_error(const char* msg, int critical){
         fclose(log_file);
     }
 
-    if (critical) {
-        exit(1);
-    }
+    if (critical) exit(1);
 }

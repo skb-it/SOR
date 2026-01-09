@@ -1,16 +1,19 @@
-all: main patient doctor registration
+all: director patient pc_doctor registration generator
 
-main: main.c errors.c common.h 
-	gcc -Wall -g -pthread main.c errors.c -o main
+director: director.c errors.c common.h 
+	gcc -Wall -g director.c errors.c -o director
+
+generator: generator.c errors.c common.h
+	gcc -Wall -g generator.c errors.c -o generator
 
 patient: patient.c errors.c  common.h
-	gcc -Wall -g -pthread patient.c errors.c -o patient
+	gcc -Wall -g patient.c errors.c -o patient
 
-doctor: doctor.c errors.c  common.h
-	gcc -Wall -g -pthread doctor.c errors.c -o doctor
+pc_doctor: pc_doctor.c errors.c  common.h
+	gcc -Wall -g pc_doctor.c errors.c -o pc_doctor
 
 registration: registration.c errors.c  common.h
-	gcc -Wall -g -pthread registration.c errors.c -o registration
+	gcc -Wall -g registration.c errors.c -o registration
 
 clean:
-	rm -f main patient doctor registration *.o sor_log.txt
+	rm -f director patient pc_doctor registration generator *.o sor_log.txt
