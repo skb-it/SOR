@@ -1,90 +1,47 @@
 #include "common.h"
 #include "errors.h"
-#include <signal.h>
-#include <sys/wait.h>
 
-int msg_id_pat_reg, msg_id_reg_doc, sem_id_waiting_room, shm_id;
-pid_t reg1_pid = 0, reg2_pid = 0, triage_pid = 0;
 
-void handle_sigint(int sig) {
-    printf("\n|DIRECTOR| Closing hospital...\n");
+int main(){
+    printf("Please enter N value (size of the waiting room):");
+
+    //SHARED MEMORY FOR N
+    key_t key_N = ftok(FTOK_PATH, ID_SHM_N);
+    if(key_N == -1) report_error("[main.c] error: key_N", 1);
+
+    int shmget_N = shmget(key_N, SHM_SIZE_INT, 0600 | IPC_CREAT);
+    if(shmget_N == -1) report_error("[main.c] error: shmget_N", 1);
+
+    struct Data *N = (struct Data*) shmat(shmget_N, NULL, 0);
+    if(N == (void *)-1) report_error("[main.c] error: shmat (N)", 1);
+    scanf("%d", &N->N);
+
+
+
+
+    //SEMAPHORE WAITING ROOM
+    key_t key_sem_waiting_room = ftok(FTOK_PATH, ID_SEM_WAITING_ROOM);
+    if(key_sem_waiting_room == -1) report_error("[patient.c] error: key_sem_waiting_room", 1);
+
+    int semget_waiting_room = semget(key_sem_waiting_room, N->N, 0600 | IPC_CREAT);
+    if(semget_waiting_room == -1) report_error("[patient.c] error: key_sem_waiting_room", 1);
+
+    for(int i = 0; i<N->N; i++){
+        semctl(semget_waiting_room, i, SETVAL, 1);
+    }
     
-    if(reg1_pid > 0) kill(reg1_pid, SIGTERM);
-    if(reg2_pid > 0) kill(reg2_pid, SIGTERM);
-    if(triage_pid > 0) kill(triage_pid, SIGTERM);
+    int K;
 
-    msgctl(msg_id_pat_reg, IPC_RMID, NULL);
-    msgctl(msg_id_reg_doc, IPC_RMID, NULL);
-    semctl(sem_id_waiting_room, 0, IPC_RMID);
-    shmctl(shm_id, IPC_RMID, NULL);
-    
-    printf("[|DIRECTOR| Hospital closed!\n");
-    exit(0);
-}
-
-int main() {
-    signal(SIGINT, handle_sigint);
-
-    int N = 0;
-    printf("Set the size of waiting room (N): ");
-    scanf("%d", &N);
-    
-    while(N <= 0){
-        printf("\nWrong number, N must be more than 0!\n");
-        printf("Set the size of waiting room (N): ");
-        scanf("%d", &N);
+    while(1){
+        sleep(5);
     }
 
 
 
-    int K = N / 2;
 
-    key_t key_s = ftok(FTOK_PATH, ID_SEM_WAITING_ROOM);
-    if(key_s == -1){
-        report_error("[main.c] error: key_s", 1);
-    }
-
-    sem_id_waiting_room = semget(key_s, 1, 0600 | IPC_CREAT);
-    semctl(sem_id_waiting_room, 0, SETVAL, N); 
-    
-    reg1_pid = fork();
-    if (reg1_pid == 0) {
-        execl("./registration", "registration", "1", NULL);
-        perror("[main.c] error: execl registration");
-        exit(1);
-    }
-
-    
-    triage_pid = fork();
-    if (triage_pid == 0) {
-        execl("./doctor", "doctor", "triage", NULL);
-        perror("[main.c] error: execl doctor triage");
-        exit(1);
-    }
-
-    printf("|DIRECTOR| Hospital works...\n");
- 
-    struct msqid_ds buf;
-    while(1) {
-        sleep(2);
-        msgctl(msg_id_pat_reg, IPC_STAT, &buf);
-        int patients_in_queue = buf.msg_qnum;
-
-        if (patients_in_queue > K && reg2_pid == 0) {
-            printf("|DIRECTOR| QUEUE > K (%d). Opening second registration.\n", patients_in_queue);
-            reg2_pid = fork();
-            if (reg2_pid == 0) {
-                execl("./registration", "registration", "2", NULL);
-                exit(0);
-            }
-        }
-
-        if (patients_in_queue < N/3 && reg2_pid > 0) {
-            printf("|DIRECTOR| Queue < N/3 (%d). Closing second registration.\n", patients_in_queue);
-            kill(reg2_pid, SIGTERM);
-            reg2_pid = 0;
-        }
-    }
+    //CLEANING SHARED MEMORY (N)
+    int shmctl_del_N = shmctl(shmget_N, IPC_RMID, NULL);
+    if(shmctl_del_N == -1) report_error("[main.c] error: shmctl_del_N", 1);
 
     return 0;
 }
