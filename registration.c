@@ -1,6 +1,7 @@
 #include "common.h"
 #include "errors.h"
 
+
 int main(){
     printf("|REGISTRATION %d| Opening...\n", getpid());
     
@@ -23,27 +24,45 @@ int main(){
     struct PatientCard *card = shmat(shmget_reg_doc, NULL, 0);
     if(card == (void *)-1) report_error("[registration.c] error: shmat (reg->doc)", 1);
 
+    //SEMAPHORE REGISTRATION
+    key_t key_sem_reg = ftok(FTOK_PATH, ID_SEM_REG);
+    if(key_sem_reg == -1) report_error("[patient.c] error: key_sem_rem", 1);
+
+    int semget_reg = semget(key_sem_reg, 1, 0600 | IPC_CREAT);
+    if(semget_reg == -1) report_error("[patient.c] error: semget_reg", 1);
+
+    int semctl_reg = semctl(semget_reg, 0 , SETVAL, 1);
+    if(semctl_reg == -1) report_error("[patient.c] error: semtcl_reg", 1);
+
+
+
+
     printf("|REGISTRATION %d| Opened!\n", getpid());
 
     while(1){
         int msgrcv_pat_reg = msgrcv(msg_pat_reg, &buf, sizeof(buf) - sizeof(long), -1, 0);
+        if(msgrcv_pat_reg == -1) report_error("[patient.c] error: msgrcv_pat_reg", 1);
+
         printf("|REGISTRATION %d| Patient %d came!\n", getpid(), buf.patient_id);
-        printf("Age: %d, Guardian: ", buf.age);
         sleep(5);
 
         card->age = buf.age;
         card->patient_id = buf.patient_id;
         card->is_guardian = buf.is_guardian;
-        card->mtype;
+        card->mtype = buf.mtype;
 
         printf("|REGISTRATION %d| Patient %d forwarded to primary care doctor!", getpid(), card->patient_id);
     }
     
 
-    //DETACHING SHARED MEMORY (PATIENT->REGISTRATION)
-    int shmdt_info = shmdt(&buf);
-    if(shmdt_info == -1) report_error("[patient.c] error: shmdt_info", 1);
+    //DETACHING SHARED MEMORY REGISTRATION->PC_DOCTOR
+    int shmdt_card = shmdt(card);
+    if(shmdt_card== -1) report_error("[patient.c] error: shmdt_card", 1);
+    
 
+    //DELETING REGISTRATION SEMAPHORE
+    int semctl_del_reg = semctl(semget_reg, 0 , IPC_RMID, 1);
+    if(semctl_del_reg == -1) report_error("[patient.c] error: semtcl_del_reg", 1);
 
     return 0;
 }

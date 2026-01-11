@@ -14,7 +14,7 @@ void triage(struct PatientCard *card){
     printf("|DOCTOR %d| Assesing triage for Patient %d...", getpid(), card->patient_id);
     sleep(1);
     triage(card);
-    printf("|DOCTOR %d| Triage %s assesed for Patient %d.\n", getpid(), card->triage ,card->patient_id);
+    printf("|DOCTOR %d| Triage assesed for Patient %d.\n", getpid(),card->patient_id);
     sleep(1);
     int random = rand() % 100;
     
@@ -44,7 +44,20 @@ int main(){
     if(shmget_reg_doc == -1) report_error("[pc_doctor.c] error: shmget_reg_doc", 1);
 
     struct PatientCard *card = shmat(shmget_reg_doc, NULL, 0);
-    if(card == (void *)-1) report_error("[registration.c] error: shmat (reg->doc)", 1);
+    if(card == (void *)-1) report_error("[pc_doctor.c] error: shmat (reg->doc)", 1);
+
+    //SEMAPHORE DOCTOR
+    key_t key_sem_doc = ftok(FTOK_PATH, ID_SEM_DOC);
+    if(key_sem_doc == -1) report_error("[pc_doctor.c] error: key_sem_doc", 1);
+
+    int semget_doc = semget(key_sem_doc, 1, 0600 | IPC_CREAT);
+    if(semget_doc == -1) report_error("[pc_doctor.c] error: key_sem_doc", 1);
+
+    union semun arg;
+    arg.val = 3;
+    int semctl_doc = semctl(semget_doc, 0 , SETVAL, arg);
+    if(semctl_doc == -1) report_error("[pc_doctor.c] error: semtcl_doc", 1);
+
 
     while(1){
         triage(card);

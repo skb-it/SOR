@@ -8,7 +8,7 @@ int main(){
     while(1){
         pid_t pat = fork();
         if(pat == 0){
-            execl("./patient.c", "PATIENT", NULL);
+            execl("./patient", "patient", NULL);
             report_error("[generator.c] error: pat = fork()", 1);
         }
 

@@ -26,6 +26,8 @@
 #define FTOK_PATH "."
 
 #define ID_SEM_WAITING_ROOM 'A'
+#define ID_SEM_REG          'M'
+#define ID_SEM_DOC          'N'
 #define ID_SHM_N            'B'
 #define ID_SHM_PAT_REG      'C'
 #define ID_SHM_REG_DOC      'D'
@@ -66,6 +68,12 @@ struct PatientCard {
     int is_guardian;
     int triage;
     int flag;
+};
+
+union semun {
+    int val;
+    struct semid_ds *buf;
+    unsigned short *array;
 };
 
 #define SHM_SIZE_INT sizeof(int)

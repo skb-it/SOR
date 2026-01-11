@@ -16,4 +16,4 @@ registration: registration.c errors.c  common.h
 	gcc -Wall -g registration.c errors.c -o registration
 
 clean:
-	rm -f director patient pc_doctor registration generator *.o sor_log.txt
+	rm -f director patient pc_doctor registration generator *.o log_sor.txt
