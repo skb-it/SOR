@@ -26,11 +26,8 @@
 #define FTOK_PATH "."
 
 #define ID_SEM_WAITING_ROOM 'A'
-#define ID_SEM_REG          'M'
 #define ID_SEM_DOC          'N'
-#define ID_SHM_N            'B'
 #define ID_SHM_PAT_REG      'C'
-#define ID_SHM_REG_DOC      'D'
 #define ID_SHM_CARD         'E'
 #define ID_MSG_PAT_REG      'F'
 

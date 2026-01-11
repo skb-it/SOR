@@ -58,7 +58,7 @@ int main(){
         if(pid > 0){
             printf("[GUARDIAN %d] Coming with my child.\n", getpid());
             wait(NULL);
-            printf("[GUARDIAN %d] My child is examinated. Leaving ER with him...", getpid());
+            printf("[GUARDIAN %d] My child is examinated. Leaving ER with him...\n", getpid());
 
             return 0;
         }

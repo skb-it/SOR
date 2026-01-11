@@ -7,7 +7,7 @@ volatile sig_atomic_t is_ER_open = 1;
 pid_t pids[5];
 
 void evacuation(){
-    printf("[DIRECTOR] Evacuation of the emergency room!");
+    printf("[DIRECTOR] Evacuation of the emergency room!\n");
     is_ER_open = 0;
                 //KILLING PROCESSES
 }
@@ -31,25 +31,24 @@ int main(){
     int semget_waiting_room = semget(key_sem_waiting_room, 1, 0600 | IPC_CREAT);
     if(semget_waiting_room == -1) report_error("[patient.c] error: key_sem_waiting_room", 1);
 
-    union semun arg_waiting_room;
-    arg_waiting_room.val = N;
-    int semctl_waiting_room = semctl(semget_waiting_room, 0 , SETVAL, arg_waiting_room);
+    union semun arg;
+    arg.val = N;
+    int semctl_waiting_room = semctl(semget_waiting_room, 0 , SETVAL, arg);
     if(semctl_waiting_room == -1) report_error("[patient.c] error: semtcl_waiting_room", 1);
 
-    //SEMAPHORE DOCTOR
+    //SEMAPHORE REGISTRATION->DOCTOR
     key_t key_sem_doc = ftok(FTOK_PATH, ID_SEM_DOC);
     if(key_sem_doc == -1) report_error("[pc_doctor.c] error: key_sem_doc", 1);
 
     int semget_doc = semget(key_sem_doc, 2, 0600 | IPC_CREAT);
     if(semget_doc == -1) report_error("[pc_doctor.c] error: key_sem_doc", 1);
     
-    union semun arg_doc;
-    arg_doc.val = 1;
-    int semctl_doc_empty = semctl(semget_doc, 0 , SETVAL, arg_doc);
+    arg.val = 1;
+    int semctl_doc_empty = semctl(semget_doc, 0 , SETVAL, arg);
     if(semctl_doc_empty == -1) report_error("[pc_doctor.c] error: semtcl_doc (empty)", 1);
 
-    arg_doc.val = 0;
-    int semctl_doc_full = semctl(semget_doc, 1 , SETVAL, arg_doc);
+    arg.val = 0;
+    int semctl_doc_full = semctl(semget_doc, 1 , SETVAL, arg);
     if(semctl_doc_full == -1) report_error("[pc_doctor.c] error: semtcl_doc (full)", 1);
 
     //OPENING REGISTRATION
@@ -83,7 +82,6 @@ int main(){
 
 
     //CLEANING
-    printf("[DIRECTOR] Evacuation!\n");
 
     for(int i=0; i<5; i++){
         if(pids[i] > 0) {
@@ -107,8 +105,13 @@ int main(){
     int semctl_del_waiting_room = semctl(semget_waiting_room, 0 , IPC_RMID, NULL);
     if(semctl_del_waiting_room == -1) report_error("[director.c] error: semtcl_del_waiting_room", 1);
   
+    //DELETING SHARED MEMORY REGISTRATION->DOC
+    key_t key_shm = ftok(FTOK_PATH, ID_SHM_REG_DOC);
+    int shmget_reg_doc = shmget(key_shm, 0, 0600);
+    int shmtcl_reg_doc_del = shmctl(shmget_reg_doc, IPC_RMID, NULL);
+    if(shmtcl_reg_doc_del == -1) report_error("[director.c] error: shmtcl_del_reg_doc", 1);
 
-    //DELETING DOCTOR SEMAPHORE
+    //DELETING REGISTRATION->DOCTOR SEMAPHORE
     int semctl_del_doc = semctl(semget_doc, 0 , IPC_RMID, NULL);
     if(semctl_del_doc == -1) report_error("[director.c] error: semtcl_del_doc", 1);
     

@@ -18,21 +18,11 @@ int main(){
     key_t key_shm_reg_doc = ftok(FTOK_PATH, ID_SHM_REG_DOC);
     if(key_shm_reg_doc == -1) report_error("[registration.c] error: key_shm_reg_doc", 1);
 
-    int shmget_reg_doc = shmget(key_shm_reg_doc, SHM_SIZE_CARD, 0600 | IPC_CREAT);
+    int shmget_reg_doc = shmget(key_shm_reg_doc, 0, 0600 | IPC_CREAT);
     if(shmget_reg_doc == -1) report_error("[registration.c] error: shmget_reg_doc", 1);
 
     struct PatientCard *card = shmat(shmget_reg_doc, NULL, 0);
     if(card == (void *)-1) report_error("[registration.c] error: shmat (reg->doc)", 1);
-
-    //SEMAPHORE REGISTRATION
-    key_t key_sem_reg = ftok(FTOK_PATH, ID_SEM_REG);
-    if(key_sem_reg == -1) report_error("[patient.c] error: key_sem_rem", 1);
-
-    int semget_reg = semget(key_sem_reg, 1, 0600 | IPC_CREAT);
-    if(semget_reg == -1) report_error("[patient.c] error: semget_reg", 1);
-
-    int semctl_reg = semctl(semget_reg, 0 , SETVAL, 1);
-    if(semctl_reg == -1) report_error("[patient.c] error: semtcl_reg", 1);
 
 
     //SEMAPHORE DOCTOR
@@ -40,7 +30,7 @@ int main(){
     if(key_sem_doc == -1) report_error("[pc_doctor.c] error: key_sem_doc", 1);
 
     int semget_doc = semget(key_sem_doc, 2, 0600);
-    if(semget_doc == -1) report_error("[pc_doctor.c] error: key_sem_doc", 1);\
+    if(semget_doc == -1) report_error("[pc_doctor.c] error: key_sem_doc", 1);
 
     struct sembuf wait_empty;
     wait_empty.sem_num = 0;
@@ -85,10 +75,5 @@ int main(){
     if(shmdt_card== -1) report_error("[registration.c] error: shmdt_card", 1);
     
 
-    //DELETING REGISTRATION SEMAPHORE
-    int semctl_del_reg = semctl(semget_reg, 0 , IPC_RMID, 1);
-    if(semctl_del_reg == -1) report_error("[registration.c] error: semtcl_del_reg", 1);
-
-    printf("|REGISTRATION %d| Closed!\n", getpid());
     return 0;
 }
