@@ -103,18 +103,6 @@ int main(){
     //LEAVING WAITING ROOM
     leave_waiting_room(semget_waiting_room);
 
-    
-
-    //SEMAPHORE DOCTOR
-    key_t key_sem_doc = ftok(FTOK_PATH, ID_SEM_DOC);
-    if(key_sem_doc == -1) report_error("[patient.c] error: key_sem_doc", 1);
-
-    int semget_doc = semget(key_sem_doc, 1, 0600 | IPC_CREAT);
-    if(semget_doc == -1) report_error("[patient.c] error: key_sem_doc", 1);
-
-    
-
-
 
     return 0;
 }

@@ -45,12 +45,12 @@ int main(){
     
     union semun arg_doc;
     arg_doc.val = 1;
-    int semctl_doc = semctl(semget_doc, 0 , SETVAL, arg_doc);
-    if(semctl_doc == -1) report_error("[pc_doctor.c] error: semtcl_doc (empty)", 1);
+    int semctl_doc_empty = semctl(semget_doc, 0 , SETVAL, arg_doc);
+    if(semctl_doc_empty == -1) report_error("[pc_doctor.c] error: semtcl_doc (empty)", 1);
 
     arg_doc.val = 0;
-    int semctl_doc = semctl(semget_doc, 1 , SETVAL, arg_doc);
-    if(semctl_doc == -1) report_error("[pc_doctor.c] error: semtcl_doc (full)", 1);
+    int semctl_doc_full = semctl(semget_doc, 1 , SETVAL, arg_doc);
+    if(semctl_doc_full == -1) report_error("[pc_doctor.c] error: semtcl_doc (full)", 1);
 
     //OPENING REGISTRATION
     pids[0] = fork();
@@ -83,7 +83,7 @@ int main(){
 
 
     //CLEANING
-    printf("[DIRECTOR] Closing and cleaning ER...\n");
+    printf("[DIRECTOR] Evacuation!\n");
 
     for(int i=0; i<5; i++){
         if(pids[i] > 0) {
@@ -111,6 +111,9 @@ int main(){
     //DELETING DOCTOR SEMAPHORE
     int semctl_del_doc = semctl(semget_doc, 0 , IPC_RMID, NULL);
     if(semctl_del_doc == -1) report_error("[director.c] error: semtcl_del_doc", 1);
+    
+    printf("[DIRECTOR] ER evacuated!\n");
+
     return 0;
 }
 
