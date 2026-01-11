@@ -51,7 +51,7 @@ int main(){
     key_t key_sem_doc = ftok(FTOK_PATH, ID_SEM_DOC);
     if(key_sem_doc == -1) report_error("[pc_doctor.c] error: key_sem_doc", 1);
 
-    int semget_doc = semget(key_sem_doc, 1, 0600);
+    int semget_doc = semget(key_sem_doc, 2, 0600);
     if(semget_doc == -1) report_error("[pc_doctor.c] error: key_sem_doc", 1);
 
     struct sembuf wait_for_data;
