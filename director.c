@@ -31,18 +31,26 @@ int main(){
     int semget_waiting_room = semget(key_sem_waiting_room, 1, 0600 | IPC_CREAT);
     if(semget_waiting_room == -1) report_error("[patient.c] error: key_sem_waiting_room", 1);
 
-    union semun arg;
-    arg.val = N;
-    int semctl_waiting_room = semctl(semget_waiting_room, 0 , SETVAL, arg);
+    union semun arg_waiting_room;
+    arg_waiting_room.val = N;
+    int semctl_waiting_room = semctl(semget_waiting_room, 0 , SETVAL, arg_waiting_room);
     if(semctl_waiting_room == -1) report_error("[patient.c] error: semtcl_waiting_room", 1);
 
     //SEMAPHORE DOCTOR
     key_t key_sem_doc = ftok(FTOK_PATH, ID_SEM_DOC);
     if(key_sem_doc == -1) report_error("[pc_doctor.c] error: key_sem_doc", 1);
 
-    int semget_doc = semget(key_sem_doc, 1, 0600 | IPC_CREAT);
+    int semget_doc = semget(key_sem_doc, 2, 0600 | IPC_CREAT);
     if(semget_doc == -1) report_error("[pc_doctor.c] error: key_sem_doc", 1);
     
+    union semun arg_doc;
+    arg_doc.val = 1;
+    int semctl_doc = semctl(semget_doc, 0 , SETVAL, arg_doc);
+    if(semctl_doc == -1) report_error("[pc_doctor.c] error: semtcl_doc (empty)", 1);
+
+    arg_doc.val = 0;
+    int semctl_doc = semctl(semget_doc, 1 , SETVAL, arg_doc);
+    if(semctl_doc == -1) report_error("[pc_doctor.c] error: semtcl_doc (full)", 1);
 
     //OPENING REGISTRATION
     pids[0] = fork();
@@ -94,13 +102,14 @@ int main(){
     int msgctl_del_pat_reg = msgctl(id_msg_pat_reg, IPC_RMID, NULL);
     if(msgctl_del_pat_reg == -1) report_error("[director.c] error: msgctl_del_pat_reg", 1);
 
+
     //DELETING WAITING ROOM SEMAPHORE
-    int semctl_del_waiting_room = semctl(semget_waiting_room, 0 , IPC_RMID, arg);
+    int semctl_del_waiting_room = semctl(semget_waiting_room, 0 , IPC_RMID, NULL);
     if(semctl_del_waiting_room == -1) report_error("[director.c] error: semtcl_del_waiting_room", 1);
-    return 0;
+  
 
     //DELETING DOCTOR SEMAPHORE
-    int semctl_del_doc = semctl(semget_doc, 0 , IPC_RMID, arg);
+    int semctl_del_doc = semctl(semget_doc, 0 , IPC_RMID, NULL);
     if(semctl_del_doc == -1) report_error("[director.c] error: semtcl_del_doc", 1);
     return 0;
 }

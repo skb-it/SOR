@@ -35,6 +35,13 @@ int main(){
     if(semctl_reg == -1) report_error("[patient.c] error: semtcl_reg", 1);
 
 
+    //SEMAPHORE DOCTOR
+    key_t key_sem_doc = ftok(FTOK_PATH, ID_SEM_DOC);
+    if(key_sem_doc == -1) report_error("[pc_doctor.c] error: key_sem_doc", 1);
+
+    int semget_doc = semget(key_sem_doc, 1, 0600);
+    if(semget_doc == -1) report_error("[pc_doctor.c] error: key_sem_doc", 1);\
+
 
 
     printf("|REGISTRATION %d| Opened!\n", getpid());
@@ -52,17 +59,26 @@ int main(){
         card->mtype = buf.mtype;
 
         printf("|REGISTRATION %d| Patient %d forwarded to primary care doctor!", getpid(), card->patient_id);
+
+        struct sembuf wait_empty;
+        wait_empty.sem_num = 0;
+        wait_empty.sem_op = -1;
+        wait_empty.sem_flg = SEM_UNDO;
+
+        int semop_wait_empty = semop(semget_doc, &wait_empty, 1);
+        if (semop_wait_empty == -1) report_error("[registration.c] error: semop_wait_empty", 1);
     }
     
 
     //DETACHING SHARED MEMORY REGISTRATION->PC_DOCTOR
     int shmdt_card = shmdt(card);
-    if(shmdt_card== -1) report_error("[patient.c] error: shmdt_card", 1);
+    if(shmdt_card== -1) report_error("[registration.c] error: shmdt_card", 1);
     
 
     //DELETING REGISTRATION SEMAPHORE
     int semctl_del_reg = semctl(semget_reg, 0 , IPC_RMID, 1);
-    if(semctl_del_reg == -1) report_error("[patient.c] error: semtcl_del_reg", 1);
+    if(semctl_del_reg == -1) report_error("[registration.c] error: semtcl_del_reg", 1);
 
+    printf("|REGISTRATION %d| Closed!\n", getpid());
     return 0;
 }

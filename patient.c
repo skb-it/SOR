@@ -36,25 +36,6 @@ void leave_waiting_room(int sem_id){
     if(semop_leave_waiting_room == -1) report_error("[patient.c] error: semop_leave_waiting_room", 1);
 }
 
-void enter_doc(int sem_id){
-    struct sembuf sb;
-    sb.sem_num = 0;
-    sb.sem_op = -1;
-    sb.sem_flg = SEM_UNDO;
-
-    int semop_enter_doc = semop(sem_id, &sb, 1);
-    if(semop_enter_doc == -1) report_error("[patient.c] error: semop_enter_doc", 1);
-}
-
-void leave_doc(int sem_id){
-    struct sembuf sb;
-    sb.sem_num = 0;
-    sb.sem_op = 1;
-    sb.sem_flg = SEM_UNDO;
-
-    int semop_leave_doc = semop(sem_id, &sb, 1);
-    if(semop_leave_doc == -1) report_error("[patient.c] error: semop_leave_doc", 1);
-}
 
 
 int main(){
@@ -131,9 +112,9 @@ int main(){
     int semget_doc = semget(key_sem_doc, 1, 0600 | IPC_CREAT);
     if(semget_doc == -1) report_error("[patient.c] error: key_sem_doc", 1);
 
-    enter_doc(semget_doc);
-
     
+
+
 
     return 0;
 }

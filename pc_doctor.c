@@ -33,6 +33,7 @@ void triage(struct PatientCard *card){
     }
 }
 
+
 int main(){
     
 
@@ -50,20 +51,40 @@ int main(){
     key_t key_sem_doc = ftok(FTOK_PATH, ID_SEM_DOC);
     if(key_sem_doc == -1) report_error("[pc_doctor.c] error: key_sem_doc", 1);
 
-    int semget_doc = semget(key_sem_doc, 1, 0600 | IPC_CREAT);
+    int semget_doc = semget(key_sem_doc, 1, 0600);
     if(semget_doc == -1) report_error("[pc_doctor.c] error: key_sem_doc", 1);
 
-    union semun arg;
-    arg.val = 3;
-    int semctl_doc = semctl(semget_doc, 0 , SETVAL, arg);
-    if(semctl_doc == -1) report_error("[pc_doctor.c] error: semtcl_doc", 1);
+    struct sembuf wait_for_data;
+    wait_for_data.sem_num = 1;
+    wait_for_data.sem_op = -1;
+    wait_for_data.sem_flg = SEM_UNDO;
+
+    struct sembuf signal_slot_free;
+    signal_slot_free.sem_num = 0;
+    signal_slot_free.sem_op = 1;
+    signal_slot_free.sem_flg = SEM_UNDO;
 
 
     while(1){
-        triage(card);
-        sleep(1);
+        printf("|DOCTOR %d| Waiting for data...\n", getpid());
 
-        //SEMAPHORE - WAITING FOR NEW PATIENT
+        semop(semget_doc, &wait_for_data, 1);
+        struct PatientCard local_card;
+        local_card.patient_id = card->patient_id;
+        local_card.triage = card->triage;
+        local_card.age = card->age;
+        local_card.flag = card->flag;
+        local_card.is_guardian = card->is_guardian;
+        local_card.is_vip = card->is_vip;
+        local_card.mtype = card->mtype;
+
+        printf("|DOCTOR %d| Received Patient %d data!\n", getpid(), local_card.patient_id);
+
+        semop(semget_doc, &signal_slot_free, 1);
+
+
+        triage(&local_card);
+        sleep(1);
     }
 
     int shmdt_reg_doc = shmdt(card);
