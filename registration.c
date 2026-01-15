@@ -18,7 +18,7 @@ int main(){
     key_t key_shm_reg_doc = ftok(FTOK_PATH, ID_SHM_REG_DOC);
     if(key_shm_reg_doc == -1) report_error("[registration.c] error: key_shm_reg_doc", 1);
 
-    int shmget_reg_doc = shmget(key_shm_reg_doc, 0, 0600 | IPC_CREAT);
+    int shmget_reg_doc = shmget(key_shm_reg_doc, sizeof(struct PatientCard), 0600 | IPC_CREAT);
     if(shmget_reg_doc == -1) report_error("[registration.c] error: shmget_reg_doc", 1);
 
     struct PatientCard *card = shmat(shmget_reg_doc, NULL, 0);
@@ -45,11 +45,11 @@ int main(){
     printf("|REGISTRATION %d| Opened!\n", getpid());
 
     while(1){
-        int msgrcv_pat_reg = msgrcv(msg_pat_reg, &buf, sizeof(buf) - sizeof(long), -1, 0);
+        int msgrcv_pat_reg = msgrcv(msg_pat_reg, &buf, sizeof(buf) - sizeof(long), -3, 0);
         if(msgrcv_pat_reg == -1) report_error("[patient.c] error: msgrcv_pat_reg", 1);
 
         printf("|REGISTRATION %d| Patient %d came!\n", getpid(), buf.patient_id);
-        sleep(2);
+        //sleep(2);
 
         printf("|REGISTRATION %d| Waiting for free doctor slot...\n", getpid());
         int semop_wait_empty = semop(semget_doc, &wait_empty, 1);

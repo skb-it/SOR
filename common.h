@@ -26,17 +26,18 @@
 #define FTOK_PATH "."
 
 #define ID_SEM_WAITING_ROOM 'A'
-#define ID_SEM_DOC          'N'
+#define ID_SEM_DOC          'B'
 #define ID_SHM_PAT_REG      'C'
+#define ID_SHM_REG_DOC      'D'
 #define ID_SHM_CARD         'E'
 #define ID_MSG_PAT_REG      'F'
 
-#define DOC_CARDIOLOGIST  'G'
-#define DOC_NEUROLOGIST   'H'
-#define DOC_EYE_DOC       'I'
-#define DOC_LARYNGOLOGIST 'J'
-#define DOC_SURGEON       'K'
-#define DOC_PEDIATRICIAN  'L'
+#define DOC_CARDIOLOGIST  1
+#define DOC_NEUROLOGIST   2
+#define DOC_EYE_DOC       3
+#define DOC_LARYNGOLOGIST 4
+#define DOC_SURGEON       5
+#define DOC_PEDIATRICIAN  6
 
 
 struct Data{
@@ -64,6 +65,7 @@ struct PatientCard {
     int age;   
     int is_guardian;
     int triage;
+    int doc;
     int flag;
 };
 

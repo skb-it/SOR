@@ -4,7 +4,6 @@
 
 volatile sig_atomic_t is_ER_open = 1;
 
-pid_t pids[5];
 
 void evacuation(){
     printf("[DIRECTOR] Evacuation of the emergency room!\n");
@@ -18,23 +17,29 @@ int main(){
     
     printf("[DIRECTOR] Opening ER...\n");
 
+    
     //SETTING N VALUE
     printf("Please enter N value (size of the waiting room):");
     int N;
-    if(scanf("%d", &N) != 1) report_error("[director.c] error: scanf",1);
+    if(scanf("%d", &N) != 1) report_error("[director.c] error: scanf (N)",1);
 
+    printf("How many doctors need to be hired?");
+    int doctors;
+    if(scanf("%d", &doctors) != 1) report_error("[director.c] error: scanf (doctors)",1);
+
+    pid_t pids[2+doctors];
 
     //SEMAPHORE WAITING ROOM
     key_t key_sem_waiting_room = ftok(FTOK_PATH, ID_SEM_WAITING_ROOM);
-    if(key_sem_waiting_room == -1) report_error("[patient.c] error: key_sem_waiting_room", 1);
+    if(key_sem_waiting_room == -1) report_error("[director.c] error: key_sem_waiting_room", 1);
 
     int semget_waiting_room = semget(key_sem_waiting_room, 1, 0600 | IPC_CREAT);
-    if(semget_waiting_room == -1) report_error("[patient.c] error: key_sem_waiting_room", 1);
+    if(semget_waiting_room == -1) report_error("[director.c] error: key_sem_waiting_room", 1);
 
     union semun arg;
     arg.val = N;
     int semctl_waiting_room = semctl(semget_waiting_room, 0 , SETVAL, arg);
-    if(semctl_waiting_room == -1) report_error("[patient.c] error: semtcl_waiting_room", 1);
+    if(semctl_waiting_room == -1) report_error("[director.c] error: semtcl_waiting_room", 1);
 
     //SEMAPHORE REGISTRATION->DOCTOR
     key_t key_sem_doc = ftok(FTOK_PATH, ID_SEM_DOC);
@@ -58,32 +63,34 @@ int main(){
         report_error("[director.c] error: reg=fork()", 1);
     }
 
+    //PATIENT GENERATOR
+    pids[1] = fork();
+    if(pids[1] == 0){
+        execl("./generator", "generator", NULL);
+        report_error("[director.c] error: pat_reg = fork()",1);
+    }
+
     //HIRING PRIMARY CARE DOCTORS
-    for(int i=0; i<3; i++){
-        pids[1+i] = fork();
-        if(pids[1+i] == 0){
+    for(int i=0; i<doctors; i++){
+        pids[2+i] = fork();
+        if(pids[2+i] == 0){
             execl("./pc_doctor", "pc_doctor", NULL);
             report_error("[director.c] error: doc=fork()", 1);
         }
     }
 
-    //PATIENT GENERATOR
-    pids[4] = fork();
-    if(pids[4] == 0){
-        execl("./generator", "generator", NULL);
-        report_error("[director.c] error: pat_reg = fork()",1);
-    }
+    
 
     printf("[DIRECTOR] ER opened!\n");
 
     while(is_ER_open){
-        sleep(1);
+        //sleep(1);
     }
 
 
     //CLEANING
 
-    for(int i=0; i<5; i++){
+    for(int i=0; i<2+doctors; i++){
         if(pids[i] > 0) {
             kill(pids[i], SIGTERM);
         }
@@ -91,7 +98,7 @@ int main(){
 
     //WAITING UNTIL PROCESSES ARE KILLED
     while(wait(NULL) > 0){
-        sleep(1);
+        //sleep(1);
     }
     
     //DELETING MESSAGE QUEUE
@@ -102,12 +109,12 @@ int main(){
 
 
     //DELETING WAITING ROOM SEMAPHORE
-    int semctl_del_waiting_room = semctl(semget_waiting_room, 0 , IPC_RMID, NULL);
+    int semctl_del_waiting_room = semctl(semget_waiting_room, 0, IPC_RMID, NULL);
     if(semctl_del_waiting_room == -1) report_error("[director.c] error: semtcl_del_waiting_room", 1);
   
     //DELETING SHARED MEMORY REGISTRATION->DOC
-    key_t key_shm = ftok(FTOK_PATH, ID_SHM_REG_DOC);
-    int shmget_reg_doc = shmget(key_shm, 0, 0600);
+    key_t key_shm_reg_doc = ftok(FTOK_PATH, ID_SHM_REG_DOC);
+    int shmget_reg_doc = shmget(key_shm_reg_doc, 0, 0600);
     int shmtcl_reg_doc_del = shmctl(shmget_reg_doc, IPC_RMID, NULL);
     if(shmtcl_reg_doc_del == -1) report_error("[director.c] error: shmtcl_del_reg_doc", 1);
 

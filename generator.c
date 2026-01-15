@@ -11,10 +11,10 @@ int main(){
             execl("./patient", "patient", NULL);
             report_error("[generator.c] error: pat = fork()", 1);
         }
-
         
-        int time = (rand() %3 ) + 1;
-        sleep(time);
+        
+        //int time = (rand() %3 ) + 1;
+        //sleep(time);
     }
     return 0;
 }

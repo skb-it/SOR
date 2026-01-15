@@ -80,7 +80,7 @@ int main(){
     enter_waiting_room(semget_waiting_room);
 
     printf("[PATIENT %d] Entered to the waiting room!\n", getpid());
-    sleep(2);
+    //sleep(2);
     printf("[PATIENT %d] Registration number taken - waiting for my turn...\n", getpid());
     
     
