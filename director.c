@@ -27,7 +27,14 @@ int main(){
     int doctors;
     if(scanf("%d", &doctors) != 1) report_error("[director.c] error: scanf (doctors)",1);
 
-    pid_t pids[2+doctors];
+    //2 PIDS FOR REGISTRATION, 1 PID FOR GENERATOR, REST FOR DOCTORS
+    pid_t pids[3+doctors];
+
+    pids[1] = 0;
+
+    //SHARED MEMORY REGISTRATION->DOCTOR
+    key_t key_shm_reg_doc = ftok(FTOK_PATH, ID_SHM_REG_DOC);
+    int shmget_reg_doc = shmget(key_shm_reg_doc, sizeof(struct PatientCard) - sizeof(long), 0600 | IPC_CREAT);
 
     //SEMAPHORE WAITING ROOM
     key_t key_sem_waiting_room = ftok(FTOK_PATH, ID_SEM_WAITING_ROOM);
@@ -56,6 +63,24 @@ int main(){
     int semctl_doc_full = semctl(semget_doc, 1 , SETVAL, arg);
     if(semctl_doc_full == -1) report_error("[pc_doctor.c] error: semtcl_doc (full)", 1);
 
+
+    //MESSAGE QUEUE PATIENT->REGISTRATION
+    key_t key_msg_pat_reg = ftok(FTOK_PATH, ID_MSG_PAT_REG);
+    if(key_msg_pat_reg == -1) report_error("[director.c] error: key_shm_pat_reg", 1);
+
+    int msg_pat_reg = msgget(key_msg_pat_reg, 0600 | IPC_CREAT);
+    if(msg_pat_reg == -1) report_error("[director.c] error: shmget_pat_reg", 1);
+
+    //MESSAGE QUEUE DOCTOR<->PATIENT
+    key_t key_msg_doc_pat = ftok(FTOK_PATH, ID_MSG_PAT_DOC);
+    if(key_msg_doc_pat == -1) report_error("[director.c] key_msg_doc_pat", 1);
+
+    int msg_doc_pat = msgget(key_msg_doc_pat, 0600 | IPC_CREAT);
+    if(msg_doc_pat == -1) report_error("[director.c] msg_doc_pat", 1);
+
+
+
+
     //OPENING REGISTRATION
     pids[0] = fork();
     if(pids[0] == 0){
@@ -64,63 +89,82 @@ int main(){
     }
 
     //PATIENT GENERATOR
-    pids[1] = fork();
-    if(pids[1] == 0){
+    pids[2] = fork();
+    if(pids[2] == 0){
         execl("./generator", "generator", NULL);
         report_error("[director.c] error: pat_reg = fork()",1);
     }
 
     //HIRING PRIMARY CARE DOCTORS
     for(int i=0; i<doctors; i++){
-        pids[2+i] = fork();
-        if(pids[2+i] == 0){
+        pids[3+i] = fork();
+        if(pids[3+i] == 0){
             execl("./pc_doctor", "pc_doctor", NULL);
             report_error("[director.c] error: doc=fork()", 1);
         }
     }
 
     
-
+    struct msqid_ds waiting_room_stat;
     printf("[DIRECTOR] ER opened!\n");
 
     while(is_ER_open){
+        int msgctl_waiting_room_stat = msgctl(msg_pat_reg, IPC_STAT, &waiting_room_stat);
+        if(msgctl_waiting_room_stat == -1) report_error("[director.c] msgctl_waiting_room_stat", 1);
+
+        int patients_in_queue = waiting_room_stat.msg_qnum;
+        if(patients_in_queue >= N/2 && pids[1] == 0){
+            printf("|DIRECTOR| Queue is too long - opening second registration...\n");
+            pids[1] = fork();
+            if(pids[1] == 0){
+                execl("./registration", "registration", NULL);
+                report_error("[director.c] reg=fork()",1);
+            }
+        }
+        else if(patients_in_queue<(N/3) && pids[1] > 0){
+            printf("|DIRECTOR| Queue is too short - closing second registration...\n");
+            kill(pids[1], SIGTERM);
+            waitpid(pids[1], NULL, 0);              //PROHIBITED OR NOT??
+            pids[1] = 0;
+        }
+
         //sleep(1);
     }
 
 
     //CLEANING
 
-    for(int i=0; i<2+doctors; i++){
+    for(int i=0; i < 3 + doctors; i++){ 
         if(pids[i] > 0) {
             kill(pids[i], SIGTERM);
-        }
     }
+}
 
     //WAITING UNTIL PROCESSES ARE KILLED
     while(wait(NULL) > 0){
         //sleep(1);
     }
     
-    //DELETING MESSAGE QUEUE
-    key_t key_msg_pat_reg = ftok(FTOK_PATH, ID_MSG_PAT_REG);
-    int id_msg_pat_reg = msgget(key_msg_pat_reg, 0600);
-    int msgctl_del_pat_reg = msgctl(id_msg_pat_reg, IPC_RMID, NULL);
+    //DELETING MESSAGE QUEUE PATIENT<->REGISTRATION
+    int msgctl_del_pat_reg = msgctl(msg_pat_reg, IPC_RMID, NULL);
     if(msgctl_del_pat_reg == -1) report_error("[director.c] error: msgctl_del_pat_reg", 1);
 
+    //DELETING MESSAGE QUEUE DOCTOR<->PATIENT
+    int msgctl_del_doc_pat = msgctl(msg_doc_pat, IPC_RMID, NULL);
+    if(msgctl_del_doc_pat == -1) report_error("[director.c] error: msgctl_del_doc_pat", 1);
 
     //DELETING WAITING ROOM SEMAPHORE
     int semctl_del_waiting_room = semctl(semget_waiting_room, 0, IPC_RMID, NULL);
     if(semctl_del_waiting_room == -1) report_error("[director.c] error: semtcl_del_waiting_room", 1);
   
     //DELETING SHARED MEMORY REGISTRATION->DOC
-    key_t key_shm_reg_doc = ftok(FTOK_PATH, ID_SHM_REG_DOC);
-    int shmget_reg_doc = shmget(key_shm_reg_doc, 0, 0600);
     int shmtcl_reg_doc_del = shmctl(shmget_reg_doc, IPC_RMID, NULL);
     if(shmtcl_reg_doc_del == -1) report_error("[director.c] error: shmtcl_del_reg_doc", 1);
 
     //DELETING REGISTRATION->DOCTOR SEMAPHORE
     int semctl_del_doc = semctl(semget_doc, 0 , IPC_RMID, NULL);
     if(semctl_del_doc == -1) report_error("[director.c] error: semtcl_del_doc", 1);
+
     
     printf("[DIRECTOR] ER evacuated!\n");
 

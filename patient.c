@@ -88,12 +88,12 @@ int main(){
     struct MsgBuffer buf;
     fill_pat_data(&buf, age, has_guardian, patient_id);
 
-    //MESSAGE QUEUE PATIENT->REGISTRATION
+    //MESSAGE QUEUE PATIENT<->REGISTRATION
     key_t key_msg_pat_reg = ftok(FTOK_PATH, ID_MSG_PAT_REG);
-    if(key_msg_pat_reg == -1) report_error("[patient.c] error: key_shm_pat_reg", 1);
+    if(key_msg_pat_reg == -1) report_error("[patient.c] key_msg_pat_reg", 1);
 
     int msg_pat_reg = msgget(key_msg_pat_reg, 0600 | IPC_CREAT);
-    if(msg_pat_reg == -1) report_error("[patient.c] error: shmget_pat_reg", 1);
+    if(msg_pat_reg == -1) report_error("[patient.c] msg_pat_reg", 1);
 
 
     //SHARING PATIENT DATA FOR REGISTRATION
@@ -103,6 +103,20 @@ int main(){
     //LEAVING WAITING ROOM
     leave_waiting_room(semget_waiting_room);
 
+    printf("[PATIENT %d] Registered! Waiting for PC doctor...\n", getpid());
+
+    //MESSAGE QUEUE PATIENT<->PC DOCTOR
+    key_t key_msg_doc_pat = ftok(FTOK_PATH, ID_MSG_PAT_DOC);
+    if(key_msg_doc_pat == -1) report_error("[patient.c] key_msg_doc_pat", 1);
+    int msg_doc_pat = msgget(key_msg_doc_pat, 0600 | IPC_CREAT);
+    if(msg_doc_pat == -1) report_error("[patient.c] msg_doc_pat", 1);
+
+    struct PatientCard filled_card;
+
+    int msgrcv_pat_doc = msgrcv(msg_doc_pat, &filled_card, sizeof(struct PatientCard) - sizeof(long), getpid(), 0);
+    if (msgrcv_pat_doc == -1) report_error("[patient.c] msgrcv_doc_pat", 1);
+
+    printf("|PATIENT| Examined. Going home...\n");
 
     return 0;
 }

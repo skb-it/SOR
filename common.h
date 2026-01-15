@@ -30,7 +30,9 @@
 #define ID_SHM_PAT_REG      'C'
 #define ID_SHM_REG_DOC      'D'
 #define ID_SHM_CARD         'E'
-#define ID_MSG_PAT_REG      'F'
+#define ID_MSG_PAT_DOC      'F'
+#define ID_MSG_PAT_REG      'G'
+
 
 #define DOC_CARDIOLOGIST  1
 #define DOC_NEUROLOGIST   2

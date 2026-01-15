@@ -25,6 +25,8 @@ int main(){
     if(card == (void *)-1) report_error("[registration.c] error: shmat (reg->doc)", 1);
 
 
+
+
     //SEMAPHORE DOCTOR
     key_t key_sem_doc = ftok(FTOK_PATH, ID_SEM_DOC);
     if(key_sem_doc == -1) report_error("[pc_doctor.c] error: key_sem_doc", 1);
