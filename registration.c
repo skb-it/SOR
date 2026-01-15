@@ -67,8 +67,6 @@ int main(){
 
         int semop_signal_data_ready = semop(semget_doc, &signal_data_ready, 1);
         if(semop_signal_data_ready == -1) report_error("[registration.c] error: semop_signal_data_ready", 1);
-
-        
     }
     
 

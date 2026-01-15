@@ -19,8 +19,8 @@ void asses_doc(struct PatientCard *card){
     int random = rand() % 100;
 
     if(card->age<18){
-        if(random< 20) card->doc=DOC_PEDIATRICIAN;
-        else if(random<40) card->doc=DOC_EYE_DOC;
+        if(random< 16) card->doc=DOC_PEDIATRICIAN;
+        else if(random<32) card->doc=DOC_EYE_DOC;
         else if(random<60) card->doc=DOC_LARYNGOLOGIST;
         else if(random<80) card->doc=DOC_NEUROLOGIST;
         else if(random<80) card->doc=DOC_CARDIOLOGIST;
@@ -37,7 +37,7 @@ void asses_doc(struct PatientCard *card){
 
 
 void triage(struct PatientCard *card){
-    printf("|DOCTOR %d| Examining Patient %d...)", getpid(), card->patient_id);
+    printf("|DOCTOR %d| Examining Patient %d...\n", getpid(), card->patient_id);
     //sleep(2);
 
     int random = rand() % 100;
@@ -121,30 +121,31 @@ int main(){
             }
         }
 
-            struct PatientCard local_card = *card;
+        struct PatientCard local_card = *card;
 
-            printf("|DOCTOR %d| Received Patient %d data!\n", getpid(), local_card.patient_id);
+        printf("|DOCTOR %d| Received Patient %d data!\n", getpid(), local_card.patient_id);
 
-            int semop_slot_free = semop(semget_doc, &signal_slot_free, 1);
-            if (semop_slot_free == -1) report_error("[pc_doctor.c] error: semop_slot_free", 1);
+        int semop_slot_free = semop(semget_doc, &signal_slot_free, 1);
+        if (semop_slot_free == -1) report_error("[pc_doctor.c] error: semop_slot_free", 1);
 
             triage(&local_card);
             //sleep(1);
-            asses_doc(&local_card);
+            if(local_card.triage == SENT_HOME){
+                struct PatientCard filled_card = local_card;
+                int msgsnd_doc_pat = msgsnd(msg_doc_pat, &filled_card, sizeof(struct PatientCard) - sizeof(long), 0);
+                if(msgsnd_doc_pat == -1) report_error("[pc_doctor.c] msgsnd_doc_pat", 1);
+            }
+            else{
+                asses_doc(&local_card);
+                struct PatientCard filled_card = local_card;
+                filled_card.mtype = filled_card.patient_id;
 
-            struct PatientCard filled_card = local_card;
-
-            filled_card.mtype = filled_card.patient_id;
-
-            int msgsnd_doc_pat = msgsnd(msg_doc_pat, &filled_card, sizeof(struct PatientCard) - sizeof(long), 0);
-            if(msgsnd_doc_pat == -1) report_error("[pc_doctor.c] msgsnd_doc_pat", 1);
-            
-
+                int msgsnd_doc_pat = msgsnd(msg_doc_pat, &filled_card, sizeof(struct PatientCard) - sizeof(long), 0);
+                if(msgsnd_doc_pat == -1) report_error("[pc_doctor.c] msgsnd_doc_pat", 1);
+            }
             if (go_to_ward_requested) {
                 go_to_ward_break();
         }
-
-
     }
 
 

@@ -27,14 +27,14 @@ int main(){
     int doctors;
     if(scanf("%d", &doctors) != 1) report_error("[director.c] error: scanf (doctors)",1);
 
-    //2 PIDS FOR REGISTRATION, 1 PID FOR GENERATOR, REST FOR DOCTORS
-    pid_t pids[3+doctors];
+    //2 PIDS FOR REGISTRATION, 1 PID FOR GENERATOR, 1 PER SPECIALIZED DOCTOR (THERE ARE 6 OF THEM) , REST FOR PC DOCTORS
+    pid_t pids[9+doctors];
 
     pids[1] = 0;
 
     //SHARED MEMORY REGISTRATION->DOCTOR
     key_t key_shm_reg_doc = ftok(FTOK_PATH, ID_SHM_REG_DOC);
-    int shmget_reg_doc = shmget(key_shm_reg_doc, sizeof(struct PatientCard) - sizeof(long), 0600 | IPC_CREAT);
+    int shmget_reg_doc = shmget(key_shm_reg_doc, sizeof(struct PatientCard), 0600 | IPC_CREAT);
 
     //SEMAPHORE WAITING ROOM
     key_t key_sem_waiting_room = ftok(FTOK_PATH, ID_SEM_WAITING_ROOM);
@@ -66,10 +66,10 @@ int main(){
 
     //MESSAGE QUEUE PATIENT->REGISTRATION
     key_t key_msg_pat_reg = ftok(FTOK_PATH, ID_MSG_PAT_REG);
-    if(key_msg_pat_reg == -1) report_error("[director.c] error: key_shm_pat_reg", 1);
+    if(key_msg_pat_reg == -1) report_error("[director.c] error: key_msg_pat_reg", 1);
 
     int msg_pat_reg = msgget(key_msg_pat_reg, 0600 | IPC_CREAT);
-    if(msg_pat_reg == -1) report_error("[director.c] error: shmget_pat_reg", 1);
+    if(msg_pat_reg == -1) report_error("[director.c] error: msg_pat_reg", 1);
 
     //MESSAGE QUEUE DOCTOR<->PATIENT
     key_t key_msg_doc_pat = ftok(FTOK_PATH, ID_MSG_PAT_DOC);
@@ -77,6 +77,48 @@ int main(){
 
     int msg_doc_pat = msgget(key_msg_doc_pat, 0600 | IPC_CREAT);
     if(msg_doc_pat == -1) report_error("[director.c] msg_doc_pat", 1);
+
+    //MESSAGE QUEUE PATIENT->CARDIOLOGIST
+    key_t key_msg_pat_cardio = ftok(FTOK_PATH, ID_MSG_PAT_CARDIO);
+    if(key_msg_pat_cardio == -1) report_error("[director.c] error: key_msg_pat_cardio", 1);
+
+    int msg_pat_cardio = msgget(key_msg_pat_cardio, 0600 | IPC_CREAT);
+    if(msg_pat_cardio == -1) report_error("[director.c] error: msg_pat_cardio", 1);
+
+    //MESSAGE QUEUE PATIENT->NEUROLOGIST
+    key_t key_msg_pat_neuro = ftok(FTOK_PATH, ID_MSG_PAT_NEURO);
+    if(key_msg_pat_neuro == -1) report_error("[director.c] error: key_msg_pat_neuro", 1);
+
+    int msg_pat_neuro = msgget(key_msg_pat_neuro, 0600 | IPC_CREAT);
+    if(msg_pat_neuro == -1) report_error("[director.c] error: msg_pat_neuro", 1);
+
+    //MESSAGE QUEUE PATIENT->EYE DOC
+    key_t key_msg_pat_eye = ftok(FTOK_PATH, ID_MSG_PAT_EYE);
+    if(key_msg_pat_eye == -1) report_error("[director.c] error: key_msg_pat_eye", 1);
+
+    int msg_pat_eye = msgget(key_msg_pat_eye, 0600 | IPC_CREAT);
+    if(msg_pat_eye == -1) report_error("[director.c] error: msg_pat_eye", 1);
+
+    //MESSAGE QUEUE PATIENT->LARYNGOLOGIST
+    key_t key_msg_pat_laryng = ftok(FTOK_PATH, ID_MSG_PAT_LARYNG);
+    if(key_msg_pat_laryng == -1) report_error("[director.c] error: key_msg_pat_laryng", 1);
+
+    int msg_pat_laryng = msgget(key_msg_pat_laryng, 0600 | IPC_CREAT);
+    if(msg_pat_laryng == -1) report_error("[director.c] error: msg_pat_laryng", 1);
+
+    //MESSAGE QUEUE PATIENT->SURGEON
+    key_t key_msg_pat_surgeon = ftok(FTOK_PATH, ID_MSG_PAT_SURGEON);
+    if(key_msg_pat_surgeon == -1) report_error("[director.c] error: key_msg_pat_surgeon", 1);
+
+    int msg_pat_surgeon = msgget(key_msg_pat_surgeon, 0600 | IPC_CREAT);
+    if(msg_pat_surgeon == -1) report_error("[director.c] error: msg_pat_surgeon", 1);
+
+    //MESSAGE QUEUE PATIENT->PEDATRICIAN
+    key_t key_msg_pat_pedatr = ftok(FTOK_PATH, ID_MSG_PAT_PEDATR);
+    if(key_msg_pat_pedatr == -1) report_error("[director.c] error: key_msg_pat_pedatr", 1);
+
+    int msg_pat_pedatr = msgget(key_msg_pat_pedatr, 0600 | IPC_CREAT);
+    if(msg_pat_pedatr == -1) report_error("[director.c] error: msg_pat_pedatr", 1);
 
 
 
@@ -92,21 +134,61 @@ int main(){
     pids[2] = fork();
     if(pids[2] == 0){
         execl("./generator", "generator", NULL);
-        report_error("[director.c] error: pat_reg = fork()",1);
+        report_error("[director.c] error: generator = fork()",1);
     }
+
+    //HIRING SPECIALIZED DOCTORS
+    pids[3] = fork();
+    if(pids[3] == 0){
+        execl("./cardiologist", "cardiologist", NULL);
+        report_error("[director.c] error: cardiologist = fork()",1);
+    }
+
+    pids[4] = fork();
+    if(pids[4] == 0){
+        execl("./neurologist", "neurologist", NULL);
+        report_error("[director.c] error: neurologist = fork()",1);
+    }
+
+    pids[5] = fork();
+    if(pids[5] == 0){
+        execl("./eyedoc", "eyedoc", NULL);
+        report_error("[director.c] error: eyedoc = fork()",1);
+    }
+    
+    pids[6] = fork();
+    if(pids[6] == 0){
+        execl("./laryngologist", "laryngologist", NULL);
+        report_error("[director.c] error: laryngologist = fork()",1);
+    }
+
+    pids[7] = fork();
+    if(pids[7] == 0){
+        execl("./surgeon", "surgeon", NULL);
+        report_error("[director.c] error: surgeon = fork()",1);
+    }
+
+    pids[8] = fork();
+    if(pids[8] == 0){
+        execl("./pedatrician", "pedatrician", NULL);
+        report_error("[director.c] error: pedatrician = fork()",1);
+    }
+
 
     //HIRING PRIMARY CARE DOCTORS
     for(int i=0; i<doctors; i++){
-        pids[3+i] = fork();
-        if(pids[3+i] == 0){
+        pids[9+i] = fork();
+        if(pids[9+i] == 0){
             execl("./pc_doctor", "pc_doctor", NULL);
             report_error("[director.c] error: doc=fork()", 1);
         }
     }
 
     
+
+
     struct msqid_ds waiting_room_stat;
-    printf("[DIRECTOR] ER opened!\n");
+    printf("|DIRECTOR| ER opened!\n");
 
     while(is_ER_open){
         int msgctl_waiting_room_stat = msgctl(msg_pat_reg, IPC_STAT, &waiting_room_stat);
@@ -134,11 +216,11 @@ int main(){
 
     //CLEANING
 
-    for(int i=0; i < 3 + doctors; i++){ 
+    for(int i=0; i < 9 + doctors; i++){ 
         if(pids[i] > 0) {
             kill(pids[i], SIGTERM);
+        }
     }
-}
 
     //WAITING UNTIL PROCESSES ARE KILLED
     while(wait(NULL) > 0){
@@ -165,6 +247,29 @@ int main(){
     int semctl_del_doc = semctl(semget_doc, 0 , IPC_RMID, NULL);
     if(semctl_del_doc == -1) report_error("[director.c] error: semtcl_del_doc", 1);
 
+    //DELETING MESSAGE QUEUE PATIENT<->CARDIOLOGIST
+    int msgctl_del_pat_cardio = msgctl(msg_pat_cardio, IPC_RMID, NULL);
+    if(msgctl_del_pat_cardio == -1) report_error("[director.c] error: msgctl_del_pat_cardio", 1);
+
+    //DELETING MESSAGE QUEUE PATIENT<->NEUROLOGIST
+    int msgctl_del_pat_neuro = msgctl(msg_pat_neuro, IPC_RMID, NULL);
+    if(msgctl_del_pat_neuro == -1) report_error("[director.c] error: msgctl_del_pat_neuro", 1);
+
+    //DELETING MESSAGE QUEUE PATIENT<->EYE DOCTOR
+    int msgctl_del_pat_doc_eye = msgctl(msg_pat_eye, IPC_RMID, NULL);
+    if(msgctl_del_pat_doc_eye == -1) report_error("[director.c] error: msgctl_del_pat_doc_eye", 1);
+
+    //DELETING MESSAGE QUEUE PATIENT<->LARYNGOLOGIST
+    int msgctl_del_pat_laryng = msgctl(msg_pat_laryng, IPC_RMID, NULL);
+    if(msgctl_del_pat_laryng == -1) report_error("[director.c] error: msgctl_del_pat_laryng", 1);
+
+    //DELETING MESSAGE QUEUE PATIENT<->SURGEON
+    int msgctl_del_pat_surgeon = msgctl(msg_pat_surgeon, IPC_RMID, NULL);
+    if(msgctl_del_pat_surgeon == -1) report_error("[director.c] error: msgctl_del_pat_surgeon", 1);
+
+    //DELETING MESSAGE QUEUE PATIENT<->PEDATRICIAN
+    int msgctl_del_pat_pedatr = msgctl(msg_pat_pedatr, IPC_RMID, NULL);
+    if(msgctl_del_pat_pedatr == -1) report_error("[director.c] error: msgctl_del_pat_pedatr", 1);
     
     printf("[DIRECTOR] ER evacuated!\n");
 

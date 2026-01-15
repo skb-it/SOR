@@ -29,9 +29,15 @@
 #define ID_SEM_DOC          'B'
 #define ID_SHM_PAT_REG      'C'
 #define ID_SHM_REG_DOC      'D'
-#define ID_SHM_CARD         'E'
-#define ID_MSG_PAT_DOC      'F'
-#define ID_MSG_PAT_REG      'G'
+#define ID_MSG_PAT_DOC      'E'
+#define ID_MSG_PAT_REG      'F'
+#define ID_MSG_PAT_CARDIO   'G'
+#define ID_MSG_PAT_NEURO    'H'
+#define ID_MSG_PAT_EYE      'I'
+#define ID_MSG_PAT_LARYNG   'J'
+#define ID_MSG_PAT_SURGEON  'K'
+#define ID_MSG_PAT_PEDATR   'L'
+
 
 
 #define DOC_CARDIOLOGIST  1

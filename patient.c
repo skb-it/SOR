@@ -116,7 +116,10 @@ int main(){
     int msgrcv_pat_doc = msgrcv(msg_doc_pat, &filled_card, sizeof(struct PatientCard) - sizeof(long), getpid(), 0);
     if (msgrcv_pat_doc == -1) report_error("[patient.c] msgrcv_doc_pat", 1);
 
-    printf("|PATIENT| Examined. Going home...\n");
+    
+
+
+    printf("|PATIENT %d| Examined. Going home...\n", getpid());
 
     return 0;
 }
