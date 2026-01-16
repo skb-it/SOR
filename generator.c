@@ -2,6 +2,8 @@
 #include "errors.h"
 
 int main(){
+    signal(SIGCHLD, SIG_IGN);
+
     srand(time(NULL) ^ getpid());
 
     //GENERATING PATIENTS

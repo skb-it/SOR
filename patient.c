@@ -163,33 +163,48 @@ int main(){
 
 
     if(filled_card.sdoc == DOC_CARDIOLOGIST){
-        int msgsnd_pat_cardio = msgsnd(msg_pat_cardio, &filled_card, sizeof(filled_card) - sizeof(long), 0);
+        int msgsnd_pat_cardio = msgsnd(msg_pat_cardio, &filled_card, sizeof(struct PatientCard) - sizeof(long), 0);
         if(msgsnd_pat_cardio == -1) report_error("[patient.c] error: msgsnd_pat_cardio", 1);
+
+        int msgrcv_pat_cardio = msgrcv(msg_pat_cardio, &filled_card, sizeof(struct PatientCard) - sizeof(long), getpid(), 0);
+        if (msgrcv_pat_cardio == -1) report_error("[cardiologist.c] msgrcv_doc_pat", 1);
+
+        return 0;
     }
     else if (filled_card.sdoc == DOC_EYE_DOC){
         int msgsnd_pat_eye = msgsnd(msg_pat_eye, &filled_card, sizeof(filled_card) - sizeof(long), 0);
         if(msgsnd_pat_eye == -1) report_error("[patient.c] error: msgsnd_pat_eye", 1);
+
+        return 0;
     }
     else if (filled_card.sdoc == DOC_LARYNGOLOGIST){
         int msgsnd_pat_laryng = msgsnd(msg_pat_laryng, &filled_card, sizeof(filled_card) - sizeof(long), 0);
         if(msgsnd_pat_laryng == -1) report_error("[patient.c] error: msgsnd_pat_laryng", 1);
+
+        return 0;
     }
     else if (filled_card.sdoc == DOC_NEUROLOGIST){
         int msgsnd_pat_neuro = msgsnd(msg_pat_neuro, &filled_card, sizeof(filled_card) - sizeof(long), 0);
         if(msgsnd_pat_neuro == -1) report_error("[patient.c] error: msgsnd_pat_neuro", 1);
+
+        return 0;
     }
     else if (filled_card.sdoc == DOC_PEDIATRICIAN){
         int msgsnd_pat_pedatr = msgsnd(msg_pat_pedatr, &filled_card, sizeof(filled_card) - sizeof(long), 0);
         if(msgsnd_pat_pedatr == -1) report_error("[patient.c] error: msgsnd_pat_pedatr", 1);
+
+        return 0;
     }
     else if (filled_card.sdoc == DOC_SURGEON){
         int msgsnd_pat_surgeon = msgsnd(msg_pat_surgeon, &filled_card, sizeof(filled_card) - sizeof(long), 0);
         if(msgsnd_pat_surgeon == -1) report_error("[patient.c] error: msgsnd_pat_surgeon", 1);
+
+        return 0;
     }
     else{
         printf("|PATIENT %d| Examined by PC doctor. Going home...\n", getpid());
+
+        return 0;
     }
 
-
-    return 0;
 }

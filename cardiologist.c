@@ -15,10 +15,10 @@ int main(){
     while(1){
         printf("|CARDIOLOGIST %d| Waiting for a patient...\n", getpid());
 
-        int msgrcv_pat_doc = msgrcv(msg_pat_cardio, &filled_card, sizeof(struct PatientCard) - sizeof(long), -3, 0);
-        if (msgrcv_pat_doc == -1) report_error("[cardiologist.c] msgrcv_doc_pat", 1);
+        int msgrcv_pat_cardio = msgrcv(msg_pat_cardio, &filled_card, sizeof(struct PatientCard) - sizeof(long), -3, 0);
+        if (msgrcv_pat_cardio == -1) report_error("[cardiologist.c] msgrcv_pat_cardio", 1);
 
-        printf("|CARDIOLOGIST %d| Patient %d came! Starting examination...\n", getpid());
+        printf("|CARDIOLOGIST %d| Patient %d came! Starting examination...\n", getpid(), filled_card.patient_id);
 
         int random = rand() % 1000;
 
