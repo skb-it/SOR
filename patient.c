@@ -116,10 +116,80 @@ int main(){
     int msgrcv_pat_doc = msgrcv(msg_doc_pat, &filled_card, sizeof(struct PatientCard) - sizeof(long), getpid(), 0);
     if (msgrcv_pat_doc == -1) report_error("[patient.c] msgrcv_doc_pat", 1);
 
-    
 
 
-    printf("|PATIENT %d| Examined. Going home...\n", getpid());
+    //MESSAGE QUEUE PATIENT->CARDIOLOGIST
+    key_t key_msg_pat_cardio = ftok(FTOK_PATH, ID_MSG_PAT_CARDIO);
+    if(key_msg_pat_cardio == -1) report_error("[director.c] error: key_msg_pat_cardio", 1);
+
+    int msg_pat_cardio = msgget(key_msg_pat_cardio, 0600 | IPC_CREAT);
+    if(msg_pat_cardio == -1) report_error("[director.c] error: msg_pat_cardio", 1);
+
+    //MESSAGE QUEUE PATIENT->NEUROLOGIST
+    key_t key_msg_pat_neuro = ftok(FTOK_PATH, ID_MSG_PAT_NEURO);
+    if(key_msg_pat_neuro == -1) report_error("[director.c] error: key_msg_pat_neuro", 1);
+
+    int msg_pat_neuro = msgget(key_msg_pat_neuro, 0600 | IPC_CREAT);
+    if(msg_pat_neuro == -1) report_error("[director.c] error: msg_pat_neuro", 1);
+
+    //MESSAGE QUEUE PATIENT->EYE DOC
+    key_t key_msg_pat_eye = ftok(FTOK_PATH, ID_MSG_PAT_EYE);
+    if(key_msg_pat_eye == -1) report_error("[director.c] error: key_msg_pat_eye", 1);
+
+    int msg_pat_eye = msgget(key_msg_pat_eye, 0600 | IPC_CREAT);
+    if(msg_pat_eye == -1) report_error("[director.c] error: msg_pat_eye", 1);
+
+    //MESSAGE QUEUE PATIENT->LARYNGOLOGIST
+    key_t key_msg_pat_laryng = ftok(FTOK_PATH, ID_MSG_PAT_LARYNG);
+    if(key_msg_pat_laryng == -1) report_error("[director.c] error: key_msg_pat_laryng", 1);
+
+    int msg_pat_laryng = msgget(key_msg_pat_laryng, 0600 | IPC_CREAT);
+    if(msg_pat_laryng == -1) report_error("[director.c] error: msg_pat_laryng", 1);
+
+    //MESSAGE QUEUE PATIENT->SURGEON
+    key_t key_msg_pat_surgeon = ftok(FTOK_PATH, ID_MSG_PAT_SURGEON);
+    if(key_msg_pat_surgeon == -1) report_error("[director.c] error: key_msg_pat_surgeon", 1);
+
+    int msg_pat_surgeon = msgget(key_msg_pat_surgeon, 0600 | IPC_CREAT);
+    if(msg_pat_surgeon == -1) report_error("[director.c] error: msg_pat_surgeon", 1);
+
+    //MESSAGE QUEUE PATIENT->PEDATRICIAN
+    key_t key_msg_pat_pedatr = ftok(FTOK_PATH, ID_MSG_PAT_PEDATR);
+    if(key_msg_pat_pedatr == -1) report_error("[director.c] error: key_msg_pat_pedatr", 1);
+
+    int msg_pat_pedatr = msgget(key_msg_pat_pedatr, 0600 | IPC_CREAT);
+    if(msg_pat_pedatr == -1) report_error("[director.c] error: msg_pat_pedatr", 1);
+
+
+
+    if(filled_card.sdoc == DOC_CARDIOLOGIST){
+        int msgsnd_pat_cardio = msgsnd(msg_pat_cardio, &filled_card, sizeof(filled_card) - sizeof(long), 0);
+        if(msgsnd_pat_cardio == -1) report_error("[patient.c] error: msgsnd_pat_cardio", 1);
+    }
+    else if (filled_card.sdoc == DOC_EYE_DOC){
+        int msgsnd_pat_eye = msgsnd(msg_pat_eye, &filled_card, sizeof(filled_card) - sizeof(long), 0);
+        if(msgsnd_pat_eye == -1) report_error("[patient.c] error: msgsnd_pat_eye", 1);
+    }
+    else if (filled_card.sdoc == DOC_LARYNGOLOGIST){
+        int msgsnd_pat_laryng = msgsnd(msg_pat_laryng, &filled_card, sizeof(filled_card) - sizeof(long), 0);
+        if(msgsnd_pat_laryng == -1) report_error("[patient.c] error: msgsnd_pat_laryng", 1);
+    }
+    else if (filled_card.sdoc == DOC_NEUROLOGIST){
+        int msgsnd_pat_neuro = msgsnd(msg_pat_neuro, &filled_card, sizeof(filled_card) - sizeof(long), 0);
+        if(msgsnd_pat_neuro == -1) report_error("[patient.c] error: msgsnd_pat_neuro", 1);
+    }
+    else if (filled_card.sdoc == DOC_PEDIATRICIAN){
+        int msgsnd_pat_pedatr = msgsnd(msg_pat_pedatr, &filled_card, sizeof(filled_card) - sizeof(long), 0);
+        if(msgsnd_pat_pedatr == -1) report_error("[patient.c] error: msgsnd_pat_pedatr", 1);
+    }
+    else if (filled_card.sdoc == DOC_SURGEON){
+        int msgsnd_pat_surgeon = msgsnd(msg_pat_surgeon, &filled_card, sizeof(filled_card) - sizeof(long), 0);
+        if(msgsnd_pat_surgeon == -1) report_error("[patient.c] error: msgsnd_pat_surgeon", 1);
+    }
+    else{
+        printf("|PATIENT %d| Examined by PC doctor. Going home...\n", getpid());
+    }
+
 
     return 0;
 }

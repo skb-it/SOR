@@ -19,19 +19,19 @@ void asses_doc(struct PatientCard *card){
     int random = rand() % 100;
 
     if(card->age<18){
-        if(random< 16) card->doc=DOC_PEDIATRICIAN;
-        else if(random<32) card->doc=DOC_EYE_DOC;
-        else if(random<60) card->doc=DOC_LARYNGOLOGIST;
-        else if(random<80) card->doc=DOC_NEUROLOGIST;
-        else if(random<80) card->doc=DOC_CARDIOLOGIST;
-        else card->doc=DOC_SURGEON;
+        if(random< 16) card->sdoc=DOC_PEDIATRICIAN;
+        else if(random<32) card->sdoc=DOC_EYE_DOC;
+        else if(random<60) card->sdoc=DOC_LARYNGOLOGIST;
+        else if(random<80) card->sdoc=DOC_NEUROLOGIST;
+        else if(random<80) card->sdoc=DOC_CARDIOLOGIST;
+        else card->sdoc=DOC_SURGEON;
     }
     else {
-        if(random< 20) card->doc=DOC_CARDIOLOGIST;
-        else if(random<40) card->doc=DOC_EYE_DOC;
-        else if(random<60) card->doc=DOC_LARYNGOLOGIST;
-        else if(random<80) card->doc=DOC_NEUROLOGIST;
-        else card->doc=DOC_SURGEON;
+        if(random< 20) card->sdoc=DOC_CARDIOLOGIST;
+        else if(random<40) card->sdoc=DOC_EYE_DOC;
+        else if(random<60) card->sdoc=DOC_LARYNGOLOGIST;
+        else if(random<80) card->sdoc=DOC_NEUROLOGIST;
+        else card->sdoc=DOC_SURGEON;
         }
 }
 
@@ -60,9 +60,10 @@ void triage(struct PatientCard *card){
 
 
 int main(){
-    srand(time(NULL) ^ getpid());
-
     signal(SIGUSR1, handle_signal);
+
+    srand(time(NULL));
+
 
     //MESSAGE QUEUE PATIENT->REGISTRATION
     key_t key_msg_pat_reg = ftok(FTOK_PATH, ID_MSG_PAT_REG);
@@ -109,7 +110,7 @@ int main(){
             go_to_ward_break();
         }
 
-        printf("|DOCTOR %d| Waiting for data...\n", getpid());
+        printf("|DOCTOR %d| Waiting for a patient card...\n", getpid());
 
         int semop_wait = semop(semget_doc, &wait_for_data, 1);
         if(semop_wait == -1){
@@ -123,28 +124,30 @@ int main(){
 
         struct PatientCard local_card = *card;
 
-        printf("|DOCTOR %d| Received Patient %d data!\n", getpid(), local_card.patient_id);
+        printf("|DOCTOR %d| Received Patient %d card!\n", getpid(), local_card.patient_id);
 
         int semop_slot_free = semop(semget_doc, &signal_slot_free, 1);
         if (semop_slot_free == -1) report_error("[pc_doctor.c] error: semop_slot_free", 1);
 
-            triage(&local_card);
-            //sleep(1);
-            if(local_card.triage == SENT_HOME){
-                struct PatientCard filled_card = local_card;
-                int msgsnd_doc_pat = msgsnd(msg_doc_pat, &filled_card, sizeof(struct PatientCard) - sizeof(long), 0);
-                if(msgsnd_doc_pat == -1) report_error("[pc_doctor.c] msgsnd_doc_pat", 1);
-            }
-            else{
-                asses_doc(&local_card);
-                struct PatientCard filled_card = local_card;
-                filled_card.mtype = filled_card.patient_id;
+        triage(&local_card);
+        //sleep(1);
+        if(local_card.triage == SENT_HOME){
+            struct PatientCard filled_card = local_card;
+            int msgsnd_doc_pat = msgsnd(msg_doc_pat, &filled_card, sizeof(struct PatientCard) - sizeof(long), 0);
+            if(msgsnd_doc_pat == -1) report_error("[pc_doctor.c] msgsnd_doc_pat", 1);
+        }
+        else{
+            asses_doc(&local_card);
+            struct PatientCard filled_card = local_card;
+            filled_card.mtype = filled_card.patient_id;
 
-                int msgsnd_doc_pat = msgsnd(msg_doc_pat, &filled_card, sizeof(struct PatientCard) - sizeof(long), 0);
-                if(msgsnd_doc_pat == -1) report_error("[pc_doctor.c] msgsnd_doc_pat", 1);
-            }
-            if (go_to_ward_requested) {
-                go_to_ward_break();
+            int msgsnd_doc_pat = msgsnd(msg_doc_pat, &filled_card, sizeof(struct PatientCard) - sizeof(long), 0);
+            if(msgsnd_doc_pat == -1) report_error("[pc_doctor.c] msgsnd_doc_pat", 1);
+        }
+
+        printf("|DOCTOR %d| Patient %d examinated!\n", getpid(), local_card.patient_id);
+        if (go_to_ward_requested) {
+            go_to_ward_break();
         }
     }
 

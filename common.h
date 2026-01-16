@@ -21,7 +21,11 @@
 #define TRIAGE_RED    1
 #define TRIAGE_YELLOW 2
 #define TRIAGE_GREEN  3
+
 #define SENT_HOME     4
+
+#define SENT_TO_WARD  1
+#define OTHER_S_HOSP  2
 
 #define FTOK_PATH "."
 
@@ -73,7 +77,8 @@ struct PatientCard {
     int age;   
     int is_guardian;
     int triage;
-    int doc;
+    int sdoc;
+    int sdoc_dec;
     int flag;
 };
 
@@ -82,6 +87,33 @@ union semun {
     struct semid_ds *buf;
     unsigned short *array;
 };
+
+struct sembuf {
+    short sem_num;
+    short sem_op;
+    short sem_flg;
+};
+
+
+void sem_lock(int semget){
+    struct sembuf sb;
+
+    sb.sem_num = 0;
+    sb.sem_op = -1;
+    sb.sem_flg = SEM_UNDO;
+
+    semop(semget, &sb, 1);
+}
+
+void sem_unlock(int semid) {
+    struct sembuf sb;
+
+    sb.sem_num = 0;
+    sb.sem_op = 1;
+    sb.sem_flg = SEM_UNDO;
+
+    semop(semid, &sb, 1);
+}
 
 #define SHM_SIZE_INT sizeof(int)
 #define SHM_SIZE_CARD sizeof(struct PatientCard)

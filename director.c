@@ -43,9 +43,9 @@ int main(){
     int semget_waiting_room = semget(key_sem_waiting_room, 1, 0600 | IPC_CREAT);
     if(semget_waiting_room == -1) report_error("[director.c] error: key_sem_waiting_room", 1);
 
-    union semun arg;
-    arg.val = N;
-    int semctl_waiting_room = semctl(semget_waiting_room, 0 , SETVAL, arg);
+    union semun sem;
+    sem.val = N;
+    int semctl_waiting_room = semctl(semget_waiting_room, 0 , SETVAL, sem);
     if(semctl_waiting_room == -1) report_error("[director.c] error: semtcl_waiting_room", 1);
 
     //SEMAPHORE REGISTRATION->DOCTOR
@@ -55,13 +55,13 @@ int main(){
     int semget_doc = semget(key_sem_doc, 2, 0600 | IPC_CREAT);
     if(semget_doc == -1) report_error("[pc_doctor.c] error: key_sem_doc", 1);
     
-    arg.val = 1;
-    int semctl_doc_empty = semctl(semget_doc, 0 , SETVAL, arg);
-    if(semctl_doc_empty == -1) report_error("[pc_doctor.c] error: semtcl_doc (empty)", 1);
+    sem.val = 1;
+    int semctl_card_reg_doc = semctl(semget_doc, 0 , SETVAL, sem);
+    if(semctl_card_reg_doc == -1) report_error("[pc_doctor.c] error: semtcl_card_doc", 1);
 
-    arg.val = 0;
-    int semctl_doc_full = semctl(semget_doc, 1 , SETVAL, arg);
-    if(semctl_doc_full == -1) report_error("[pc_doctor.c] error: semtcl_doc (full)", 1);
+    sem.val = 0;
+    int semctl_card_doc_reg = semctl(semget_doc, 1 , SETVAL, sem);
+    if(semctl_card_doc_reg == -1) report_error("[pc_doctor.c] error: semtcl_card_doc", 1);
 
 
     //MESSAGE QUEUE PATIENT->REGISTRATION
