@@ -1,4 +1,4 @@
-all: director patient pc_doctor registration generator
+all: director patient pc_doctor registration generator laryngologist neurologist eyedoc cardiologist pediatrician
 
 director: director.c errors.c common.h 
 	gcc -Wall -g director.c errors.c -o director
@@ -30,8 +30,8 @@ eyedoc: eyedoc.c errors.c common.h
 cardiologist: cardiologist.c errors.c common.h
 	gcc -Wall -g cardiologist.c errors.c -o cardiologist
 
-pedatrician: pedatrician.c errors.c common.h
-	gcc -Wall -g pedatrician.c errors.c -o pedatrician
+pediatrician: pediatrician.c errors.c common.h
+	gcc -Wall -g pediatrician.c errors.c -o pediatrician
 
 clean:
-	rm -f director patient pc_doctor registration generator laryngologist neurologist surgeon eyedoc cardiologist pedatrician *.o log_sor.txt
+	rm -f director patient pc_doctor registration generator laryngologist neurologist surgeon eyedoc cardiologist pediatrician *.o log_sor.txt

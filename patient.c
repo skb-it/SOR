@@ -154,20 +154,25 @@ int main(){
     if(msg_pat_surgeon == -1) report_error("[director.c] error: msg_pat_surgeon", 1);
 
     //MESSAGE QUEUE PATIENT->PEDATRICIAN
-    key_t key_msg_pat_pedatr = ftok(FTOK_PATH, ID_MSG_PAT_PEDATR);
-    if(key_msg_pat_pedatr == -1) report_error("[director.c] error: key_msg_pat_pedatr", 1);
+    key_t key_msg_pat_pediatr = ftok(FTOK_PATH, ID_MSG_PAT_PEDIATR);
+    if(key_msg_pat_pediatr == -1) report_error("[director.c] error: key_msg_pat_pediatr", 1);
 
-    int msg_pat_pedatr = msgget(key_msg_pat_pedatr, 0600 | IPC_CREAT);
-    if(msg_pat_pedatr == -1) report_error("[director.c] error: msg_pat_pedatr", 1);
+    int msg_pat_pediatr = msgget(key_msg_pat_pediatr, 0600 | IPC_CREAT);
+    if(msg_pat_pediatr == -1) report_error("[director.c] error: msg_pat_pediatr", 1);
 
-
+    if(filled_card.is_vip == 1){
+        filled_card.mtype = VIP;
+    }
+    else{
+        filled_card.mtype = COMMON;
+    }
 
     if(filled_card.sdoc == DOC_CARDIOLOGIST){
         int msgsnd_pat_cardio = msgsnd(msg_pat_cardio, &filled_card, sizeof(struct PatientCard) - sizeof(long), 0);
         if(msgsnd_pat_cardio == -1) report_error("[patient.c] error: msgsnd_pat_cardio", 1);
 
         int msgrcv_pat_cardio = msgrcv(msg_pat_cardio, &filled_card, sizeof(struct PatientCard) - sizeof(long), getpid(), 0);
-        if (msgrcv_pat_cardio == -1) report_error("[cardiologist.c] msgrcv_doc_pat", 1);
+        if (msgrcv_pat_cardio == -1) report_error("[patient.c] msgrcv_pat_cardio", 1);
 
         return 0;
     }
@@ -175,11 +180,17 @@ int main(){
         int msgsnd_pat_eye = msgsnd(msg_pat_eye, &filled_card, sizeof(filled_card) - sizeof(long), 0);
         if(msgsnd_pat_eye == -1) report_error("[patient.c] error: msgsnd_pat_eye", 1);
 
+        int msgrcv_pat_eye = msgrcv(msg_pat_eye, &filled_card, sizeof(struct PatientCard) - sizeof(long), getpid(), 0);
+        if (msgrcv_pat_eye == -1) report_error("[patient.c] msgrcv_pat_eye", 1);
+
         return 0;
     }
     else if (filled_card.sdoc == DOC_LARYNGOLOGIST){
         int msgsnd_pat_laryng = msgsnd(msg_pat_laryng, &filled_card, sizeof(filled_card) - sizeof(long), 0);
         if(msgsnd_pat_laryng == -1) report_error("[patient.c] error: msgsnd_pat_laryng", 1);
+
+        int msgrcv_pat_laryng = msgrcv(msg_pat_laryng, &filled_card, sizeof(struct PatientCard) - sizeof(long), getpid(), 0);
+        if (msgrcv_pat_laryng == -1) report_error("[patient.c] msgrcv_pat_laryng", 1);
 
         return 0;
     }
@@ -187,17 +198,26 @@ int main(){
         int msgsnd_pat_neuro = msgsnd(msg_pat_neuro, &filled_card, sizeof(filled_card) - sizeof(long), 0);
         if(msgsnd_pat_neuro == -1) report_error("[patient.c] error: msgsnd_pat_neuro", 1);
 
+        int msgrcv_pat_neuro = msgrcv(msg_pat_neuro, &filled_card, sizeof(struct PatientCard) - sizeof(long), getpid(), 0);
+        if (msgrcv_pat_neuro == -1) report_error("[patient.c] msgrcv_pat_neuro", 1);
+
         return 0;
     }
     else if (filled_card.sdoc == DOC_PEDIATRICIAN){
-        int msgsnd_pat_pedatr = msgsnd(msg_pat_pedatr, &filled_card, sizeof(filled_card) - sizeof(long), 0);
-        if(msgsnd_pat_pedatr == -1) report_error("[patient.c] error: msgsnd_pat_pedatr", 1);
+        int msgsnd_pat_pediatr = msgsnd(msg_pat_pediatr, &filled_card, sizeof(filled_card) - sizeof(long), 0);
+        if(msgsnd_pat_pediatr == -1) report_error("[patient.c] error: msgsnd_pat_pediatr", 1);
+
+        int msgrcv_pat_pediatr = msgrcv(msg_pat_laryng, &filled_card, sizeof(struct PatientCard) - sizeof(long), getpid(), 0);
+        if (msgrcv_pat_pediatr == -1) report_error("[patient.c] msgrcv_pat_pediatr", 1);
 
         return 0;
     }
     else if (filled_card.sdoc == DOC_SURGEON){
         int msgsnd_pat_surgeon = msgsnd(msg_pat_surgeon, &filled_card, sizeof(filled_card) - sizeof(long), 0);
         if(msgsnd_pat_surgeon == -1) report_error("[patient.c] error: msgsnd_pat_surgeon", 1);
+
+        int msgrcv_pat_surgeon = msgrcv(msg_pat_surgeon, &filled_card, sizeof(struct PatientCard) - sizeof(long), getpid(), 0);
+        if (msgrcv_pat_surgeon == -1) report_error("[patient.c] msgrcv_pat_surgeon", 1);
 
         return 0;
     }

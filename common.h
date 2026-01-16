@@ -40,7 +40,7 @@
 #define ID_MSG_PAT_EYE      'I'
 #define ID_MSG_PAT_LARYNG   'J'
 #define ID_MSG_PAT_SURGEON  'K'
-#define ID_MSG_PAT_PEDATR   'L'
+#define ID_MSG_PAT_PEDIATR  'L'
 
 
 
@@ -88,14 +88,8 @@ union semun {
     unsigned short *array;
 };
 
-struct sembuf {
-    short sem_num;
-    short sem_op;
-    short sem_flg;
-};
-
-
-void sem_lock(int semget){
+/*
+static void sem_lock(int semget){
     struct sembuf sb;
 
     sb.sem_num = 0;
@@ -105,7 +99,7 @@ void sem_lock(int semget){
     semop(semget, &sb, 1);
 }
 
-void sem_unlock(int semid) {
+static void sem_unlock(int semget) {
     struct sembuf sb;
 
     sb.sem_num = 0;
@@ -114,6 +108,7 @@ void sem_unlock(int semid) {
 
     semop(semid, &sb, 1);
 }
+*/
 
 #define SHM_SIZE_INT sizeof(int)
 #define SHM_SIZE_CARD sizeof(struct PatientCard)

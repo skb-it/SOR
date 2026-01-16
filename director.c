@@ -113,12 +113,12 @@ int main(){
     int msg_pat_surgeon = msgget(key_msg_pat_surgeon, 0600 | IPC_CREAT);
     if(msg_pat_surgeon == -1) report_error("[director.c] error: msg_pat_surgeon", 1);
 
-    //MESSAGE QUEUE PATIENT->PEDATRICIAN
-    key_t key_msg_pat_pedatr = ftok(FTOK_PATH, ID_MSG_PAT_PEDATR);
-    if(key_msg_pat_pedatr == -1) report_error("[director.c] error: key_msg_pat_pedatr", 1);
+    //MESSAGE QUEUE PATIENT->PEDIATRICIAN
+    key_t key_msg_pat_pediatr = ftok(FTOK_PATH, ID_MSG_PAT_PEDIATR);
+    if(key_msg_pat_pediatr == -1) report_error("[director.c] error: key_msg_pat_pediatr", 1);
 
-    int msg_pat_pedatr = msgget(key_msg_pat_pedatr, 0600 | IPC_CREAT);
-    if(msg_pat_pedatr == -1) report_error("[director.c] error: msg_pat_pedatr", 1);
+    int msg_pat_pediatr = msgget(key_msg_pat_pediatr, 0600 | IPC_CREAT);
+    if(msg_pat_pediatr == -1) report_error("[director.c] error: msg_pat_pediatr", 1);
 
 
 
@@ -170,8 +170,8 @@ int main(){
 
     pids[8] = fork();
     if(pids[8] == 0){
-        execl("./pedatrician", "pedatrician", NULL);
-        report_error("[director.c] error: pedatrician = fork()",1);
+        execl("./pediatrician", "pediatrician", NULL);
+        report_error("[director.c] error: pediatrician = fork()",1);
     }
 
 
@@ -267,9 +267,9 @@ int main(){
     int msgctl_del_pat_surgeon = msgctl(msg_pat_surgeon, IPC_RMID, NULL);
     if(msgctl_del_pat_surgeon == -1) report_error("[director.c] error: msgctl_del_pat_surgeon", 1);
 
-    //DELETING MESSAGE QUEUE PATIENT<->PEDATRICIAN
-    int msgctl_del_pat_pedatr = msgctl(msg_pat_pedatr, IPC_RMID, NULL);
-    if(msgctl_del_pat_pedatr == -1) report_error("[director.c] error: msgctl_del_pat_pedatr", 1);
+    //DELETING MESSAGE QUEUE PATIENT<->PEDIATRICIAN
+    int msgctl_del_pat_pediatr = msgctl(msg_pat_pediatr, IPC_RMID, NULL);
+    if(msgctl_del_pat_pediatr == -1) report_error("[director.c] error: msgctl_del_pat_pediatr", 1);
     
     printf("[DIRECTOR] ER evacuated!\n");
 

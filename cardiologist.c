@@ -35,7 +35,7 @@ int main(){
         int msgsnd_pat_cardio = msgsnd(msg_pat_cardio, &filled_card, sizeof(filled_card) - sizeof(long), 0);
         if(msgsnd_pat_cardio == -1) report_error("[catdiologist.c] error: msgsnd_pat_cardio", 1);
 
-        printf("|CARDIOLOGIST %d| Patient %d examinated!\n", getpid());
+        printf("|CARDIOLOGIST %d| Patient %d examinated!\n", getpid(), filled_card.patient_id);
     }
 
 
