@@ -1,19 +1,6 @@
 #include "common.h"
 #include "errors.h"
 
-volatile sig_atomic_t go_to_ward_requested = 0;
-
-void handle_signal(int sig) {
-    go_to_ward_requested = 1;
-}
-
-void go_to_ward_break() {
-    printf("\n<<<|DOCTOR %d| RECEIVED SIGNAL! Going to ward...\n", getpid());
-    int break_time = (rand() % 5) + 3;
-    //sleep(break_time);
-    printf(">>>|DOCTOR %d| Returned from ward to ER.\n\n", getpid());
-    go_to_ward_requested = 0;
-}
 
 void asses_doc(struct PatientCard *card){
     int random = rand() % 100;
@@ -44,24 +31,21 @@ void triage(struct PatientCard *card){
     
     if (random < 10) {
         card->triage = TRIAGE_RED;
-        printf("|DOCTOR %d| PATIENT %d -> RED TRIAGE\n", getpid(), card->patient_id);
-    } else if (random < 40) {
+    } 
+    else if (random < 45) {
         card->triage = TRIAGE_YELLOW;
-        printf("|DOCTOR %d| PATIENT %d -> YELLOW TRIAGE\n", getpid(), card->patient_id);
-    } else if (random < 80) {
-        card->triage = TRIAGE_GREEN;
-        printf("|DOCTOR %d| PATIENT %d -> GREEN) TRIAGE\n", getpid(), card->patient_id);
-    } else {
-        card->triage = SENT_HOME;
-        printf("|DOCTOR %d| PATIENT %d -> SENT TO HOME\n", getpid(), card->patient_id);
+    }   
+    else if (random < 95) {
+    card->triage = TRIAGE_GREEN;
+    } 
+    else {
+    card->triage = SENT_HOME;
     }
 }
 
 
 
 int main(){
-    signal(SIGUSR1, handle_signal);
-
     srand(time(NULL));
 
 
@@ -106,21 +90,10 @@ int main(){
 
 
     while(1){
-        if (go_to_ward_requested) {
-            go_to_ward_break();
-        }
-
         printf("|DOCTOR %d| Waiting for a patient card...\n", getpid());
 
         int semop_wait = semop(semget_doc, &wait_for_data, 1);
-        if(semop_wait == -1){
-            if (errno == EINTR) {
-                if (go_to_ward_requested) go_to_ward_break();
-                continue;
-            } else {
-                report_error("semop wait failed", 1);
-            }
-        }
+        if(semop_wait == -1) report_error("[pc_doctor.c] semop_wait", 1);
 
         struct PatientCard local_card = *card;
 
@@ -146,9 +119,6 @@ int main(){
         }
 
         printf("|DOCTOR %d| Patient %d examinated!\n", getpid(), local_card.patient_id);
-        if (go_to_ward_requested) {
-            go_to_ward_break();
-        }
     }
 
 

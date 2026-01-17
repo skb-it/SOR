@@ -1,4 +1,4 @@
-all: director patient pc_doctor registration generator laryngologist neurologist eyedoc cardiologist pediatrician
+all: director patient pc_doctor registration generator laryngologist neurologist eyedoc cardiologist pediatrician surgeon
 
 director: director.c errors.c common.h 
 	gcc -Wall -g director.c errors.c -o director

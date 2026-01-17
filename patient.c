@@ -58,7 +58,7 @@ int main(){
         if(pid > 0){
             printf("[GUARDIAN %d] Coming with my child.\n", getpid());
             wait(NULL);
-            printf("[GUARDIAN %d] My child is examinated. Leaving ER with him...\n", getpid());
+            printf("[GUARDIAN %d] My child is examinated.\n", getpid());
 
             return 0;
         }
@@ -207,7 +207,7 @@ int main(){
         int msgsnd_pat_pediatr = msgsnd(msg_pat_pediatr, &filled_card, sizeof(filled_card) - sizeof(long), 0);
         if(msgsnd_pat_pediatr == -1) report_error("[patient.c] error: msgsnd_pat_pediatr", 1);
 
-        int msgrcv_pat_pediatr = msgrcv(msg_pat_laryng, &filled_card, sizeof(struct PatientCard) - sizeof(long), getpid(), 0);
+        int msgrcv_pat_pediatr = msgrcv(msg_pat_pediatr, &filled_card, sizeof(struct PatientCard) - sizeof(long), getpid(), 0);
         if (msgrcv_pat_pediatr == -1) report_error("[patient.c] msgrcv_pat_pediatr", 1);
 
         return 0;

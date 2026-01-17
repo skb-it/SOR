@@ -8,7 +8,6 @@ volatile sig_atomic_t is_ER_open = 1;
 void evacuation(){
     printf("[DIRECTOR] Evacuation of the emergency room!\n");
     is_ER_open = 0;
-                //KILLING PROCESSES
 }
 
 int main(){
@@ -21,7 +20,7 @@ int main(){
     //SETTING N VALUE
     printf("Please enter N value (size of the waiting room):");
     int N;
-    if(scanf("%d", &N) != 1) report_error("[director.c] error: scanf (N)",1);
+    if(scanf("%d", &N) != 1 || N <= 0) report_error("Invalid N value", 1);
 
     printf("How many doctors need to be hired?");
     int doctors;
@@ -208,6 +207,17 @@ int main(){
             kill(pids[1], SIGTERM);
             waitpid(pids[1], NULL, 0);              //PROHIBITED OR NOT??
             pids[1] = 0;
+        }
+
+        //RANDOM SENDING OF SPECIALIZED DOCTORS TO WARD
+        int random = rand() % 100;
+        if(random==1){
+            int sdoc = (rand() %6)+3;
+
+            if(pids[sdoc] > 0){
+                printf("|DIRECTOR| Sending specialized doctor %d to ward!\n", pids[sdoc]);
+                kill(pids[sdoc], SIGUSR1);
+            }
         }
 
         //sleep(1);
