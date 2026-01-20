@@ -62,12 +62,13 @@ int main(){
         if(random < 145){
             filled_card.sdoc_dec = SENT_TO_WARD;
         }
-        else if(random < 850){
-            filled_card.sdoc_dec = SENT_HOME;
-        }
-        else{
+        else if(random < 150){
             filled_card.sdoc_dec = OTHER_S_HOSP;
         }
+        else{
+            filled_card.sdoc_dec = SENT_HOME;
+        }
+
 
 
         int msgsnd_pat_pediatr = msgsnd(msg_pat_pediatr, &filled_card, sizeof(filled_card) - sizeof(long), 0);

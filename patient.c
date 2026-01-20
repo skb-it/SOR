@@ -23,7 +23,7 @@ void enter_waiting_room(int sem_id){
     sb.sem_flg = SEM_UNDO;
 
     int semop_enter_waiting_room = semop(sem_id, &sb, 1);
-    if(semop_enter_waiting_room == -1) report_error("[patient.c] error: semop_enter_waiting_room", 1);
+    if(semop_enter_waiting_room == -1) report_error("[patient.c] semop_enter_waiting_room", 1);
 }
 
 void leave_waiting_room(int sem_id){
@@ -33,7 +33,7 @@ void leave_waiting_room(int sem_id){
     sb.sem_flg = SEM_UNDO;
 
     int semop_leave_waiting_room = semop(sem_id, &sb, 1);
-    if(semop_leave_waiting_room == -1) report_error("[patient.c] error: semop_leave_waiting_room", 1);
+    if(semop_leave_waiting_room == -1) report_error("[patient.c] semop_leave_waiting_room", 1);
 }
 
 
@@ -51,8 +51,9 @@ int main(){
     if(age < 18){
         has_guardian = 1;
         pid_t pid = fork();
-
-        if(pid == -1) report_error("[patient.c] error: fork()", 1);
+        if(pid == -1) {
+            report_error("[patient.c] pid = fork()", 1);
+        }
 
         //GUARDIAN PROCESS
         if(pid > 0){
@@ -71,10 +72,10 @@ int main(){
 
     //SEMAPHORE WAITING ROOM
     key_t key_sem_waiting_room = ftok(FTOK_PATH, ID_SEM_WAITING_ROOM);
-    if(key_sem_waiting_room == -1) report_error("[patient.c] error: key_sem_waiting_room", 1);
+    if(key_sem_waiting_room == -1) report_error("[patient.c] key_sem_waiting_room", 1);
 
     int semget_waiting_room = semget(key_sem_waiting_room, 1, 0600);
-    if(semget_waiting_room == -1) report_error("[patient.c] error: semget_waiting_room", 1);
+    if(semget_waiting_room == -1) report_error("[patient.c] semget_waiting_room", 1);
 
     printf("[PATIENT %d] Trying to enter to the waiting room...\n", getpid());
     enter_waiting_room(semget_waiting_room);
@@ -88,9 +89,11 @@ int main(){
     struct MsgBuffer buf;
     fill_pat_data(&buf, age, has_guardian, patient_id);
 
+
     //MESSAGE QUEUE PATIENT<->REGISTRATION
     key_t key_msg_pat_reg = ftok(FTOK_PATH, ID_MSG_PAT_REG);
     if(key_msg_pat_reg == -1) report_error("[patient.c] key_msg_pat_reg", 1);
+
 
     int msg_pat_reg = msgget(key_msg_pat_reg, 0600 | IPC_CREAT);
     if(msg_pat_reg == -1) report_error("[patient.c] msg_pat_reg", 1);
@@ -98,16 +101,19 @@ int main(){
 
     //SHARING PATIENT DATA FOR REGISTRATION
     int msgsnd_pat_reg = msgsnd(msg_pat_reg, &buf, sizeof(buf) - sizeof(long), 0);
-    if(msgsnd_pat_reg == -1) report_error("[patient.c] error: msgsnd_pat_reg", 1);
+    if(msgsnd_pat_reg == -1) report_error("[patient.c] msgsnd_pat_reg", 1);
+
 
     //LEAVING WAITING ROOM
     leave_waiting_room(semget_waiting_room);
 
     printf("[PATIENT %d] Registered! Waiting for PC doctor...\n", getpid());
 
+
     //MESSAGE QUEUE PATIENT<->PC DOCTOR
     key_t key_msg_doc_pat = ftok(FTOK_PATH, ID_MSG_PAT_DOC);
     if(key_msg_doc_pat == -1) report_error("[patient.c] key_msg_doc_pat", 1);
+
     int msg_doc_pat = msgget(key_msg_doc_pat, 0600 | IPC_CREAT);
     if(msg_doc_pat == -1) report_error("[patient.c] msg_doc_pat", 1);
 
@@ -120,45 +126,48 @@ int main(){
 
     //MESSAGE QUEUE PATIENT->CARDIOLOGIST
     key_t key_msg_pat_cardio = ftok(FTOK_PATH, ID_MSG_PAT_CARDIO);
-    if(key_msg_pat_cardio == -1) report_error("[director.c] error: key_msg_pat_cardio", 1);
+    if(key_msg_pat_cardio == -1) report_error("[patient.c] key_msg_pat_cardio", 1);
 
     int msg_pat_cardio = msgget(key_msg_pat_cardio, 0600 | IPC_CREAT);
-    if(msg_pat_cardio == -1) report_error("[director.c] error: msg_pat_cardio", 1);
+    if(msg_pat_cardio == -1) report_error("[patient.c] msg_pat_cardio", 1);
+
 
     //MESSAGE QUEUE PATIENT->NEUROLOGIST
     key_t key_msg_pat_neuro = ftok(FTOK_PATH, ID_MSG_PAT_NEURO);
-    if(key_msg_pat_neuro == -1) report_error("[director.c] error: key_msg_pat_neuro", 1);
+    if(key_msg_pat_neuro == -1) report_error("[patient.c] key_msg_pat_neuro", 1);
 
     int msg_pat_neuro = msgget(key_msg_pat_neuro, 0600 | IPC_CREAT);
-    if(msg_pat_neuro == -1) report_error("[director.c] error: msg_pat_neuro", 1);
+    if(msg_pat_neuro == -1) report_error("[patient.c] msg_pat_neuro", 1);
+
 
     //MESSAGE QUEUE PATIENT->EYE DOC
     key_t key_msg_pat_eye = ftok(FTOK_PATH, ID_MSG_PAT_EYE);
-    if(key_msg_pat_eye == -1) report_error("[director.c] error: key_msg_pat_eye", 1);
+    if(key_msg_pat_eye == -1) report_error("[patient.c] key_msg_pat_eye", 1);
 
     int msg_pat_eye = msgget(key_msg_pat_eye, 0600 | IPC_CREAT);
-    if(msg_pat_eye == -1) report_error("[director.c] error: msg_pat_eye", 1);
+    if(msg_pat_eye == -1) report_error("[patient.c] msg_pat_eye", 1);
+
 
     //MESSAGE QUEUE PATIENT->LARYNGOLOGIST
     key_t key_msg_pat_laryng = ftok(FTOK_PATH, ID_MSG_PAT_LARYNG);
-    if(key_msg_pat_laryng == -1) report_error("[director.c] error: key_msg_pat_laryng", 1);
+    if(key_msg_pat_laryng == -1) report_error("[patient.c] key_msg_pat_laryng", 1);
 
     int msg_pat_laryng = msgget(key_msg_pat_laryng, 0600 | IPC_CREAT);
-    if(msg_pat_laryng == -1) report_error("[director.c] error: msg_pat_laryng", 1);
+    if(msg_pat_laryng == -1) report_error("[patient.c] msg_pat_laryng", 1);
 
     //MESSAGE QUEUE PATIENT->SURGEON
     key_t key_msg_pat_surgeon = ftok(FTOK_PATH, ID_MSG_PAT_SURGEON);
-    if(key_msg_pat_surgeon == -1) report_error("[director.c] error: key_msg_pat_surgeon", 1);
+    if(key_msg_pat_surgeon == -1) report_error("[patient.c] key_msg_pat_surgeon", 1);
 
     int msg_pat_surgeon = msgget(key_msg_pat_surgeon, 0600 | IPC_CREAT);
-    if(msg_pat_surgeon == -1) report_error("[director.c] error: msg_pat_surgeon", 1);
+    if(msg_pat_surgeon == -1) report_error("[patient.c] msg_pat_surgeon", 1);
 
     //MESSAGE QUEUE PATIENT->PEDATRICIAN
     key_t key_msg_pat_pediatr = ftok(FTOK_PATH, ID_MSG_PAT_PEDIATR);
-    if(key_msg_pat_pediatr == -1) report_error("[director.c] error: key_msg_pat_pediatr", 1);
+    if(key_msg_pat_pediatr == -1) report_error("[patient.c] key_msg_pat_pediatr", 1);
 
     int msg_pat_pediatr = msgget(key_msg_pat_pediatr, 0600 | IPC_CREAT);
-    if(msg_pat_pediatr == -1) report_error("[director.c] error: msg_pat_pediatr", 1);
+    if(msg_pat_pediatr == -1) report_error("[patient.c] msg_pat_pediatr", 1);
 
     if(filled_card.is_vip == 1){
         filled_card.mtype = VIP;
@@ -169,7 +178,7 @@ int main(){
 
     if(filled_card.sdoc == DOC_CARDIOLOGIST){
         int msgsnd_pat_cardio = msgsnd(msg_pat_cardio, &filled_card, sizeof(struct PatientCard) - sizeof(long), 0);
-        if(msgsnd_pat_cardio == -1) report_error("[patient.c] error: msgsnd_pat_cardio", 1);
+        if(msgsnd_pat_cardio == -1) report_error("[patient.c] msgsnd_pat_cardio", 1);
 
         int msgrcv_pat_cardio = msgrcv(msg_pat_cardio, &filled_card, sizeof(struct PatientCard) - sizeof(long), getpid(), 0);
         if (msgrcv_pat_cardio == -1) report_error("[patient.c] msgrcv_pat_cardio", 1);
@@ -178,7 +187,7 @@ int main(){
     }
     else if (filled_card.sdoc == DOC_EYE_DOC){
         int msgsnd_pat_eye = msgsnd(msg_pat_eye, &filled_card, sizeof(filled_card) - sizeof(long), 0);
-        if(msgsnd_pat_eye == -1) report_error("[patient.c] error: msgsnd_pat_eye", 1);
+        if(msgsnd_pat_eye == -1) report_error("[patient.c] msgsnd_pat_eye", 1);
 
         int msgrcv_pat_eye = msgrcv(msg_pat_eye, &filled_card, sizeof(struct PatientCard) - sizeof(long), getpid(), 0);
         if (msgrcv_pat_eye == -1) report_error("[patient.c] msgrcv_pat_eye", 1);
@@ -187,7 +196,7 @@ int main(){
     }
     else if (filled_card.sdoc == DOC_LARYNGOLOGIST){
         int msgsnd_pat_laryng = msgsnd(msg_pat_laryng, &filled_card, sizeof(filled_card) - sizeof(long), 0);
-        if(msgsnd_pat_laryng == -1) report_error("[patient.c] error: msgsnd_pat_laryng", 1);
+        if(msgsnd_pat_laryng == -1) report_error("[patient.c] msgsnd_pat_laryng", 1);
 
         int msgrcv_pat_laryng = msgrcv(msg_pat_laryng, &filled_card, sizeof(struct PatientCard) - sizeof(long), getpid(), 0);
         if (msgrcv_pat_laryng == -1) report_error("[patient.c] msgrcv_pat_laryng", 1);
@@ -196,7 +205,7 @@ int main(){
     }
     else if (filled_card.sdoc == DOC_NEUROLOGIST){
         int msgsnd_pat_neuro = msgsnd(msg_pat_neuro, &filled_card, sizeof(filled_card) - sizeof(long), 0);
-        if(msgsnd_pat_neuro == -1) report_error("[patient.c] error: msgsnd_pat_neuro", 1);
+        if(msgsnd_pat_neuro == -1) report_error("[patient.c] msgsnd_pat_neuro", 1);
 
         int msgrcv_pat_neuro = msgrcv(msg_pat_neuro, &filled_card, sizeof(struct PatientCard) - sizeof(long), getpid(), 0);
         if (msgrcv_pat_neuro == -1) report_error("[patient.c] msgrcv_pat_neuro", 1);
@@ -205,7 +214,7 @@ int main(){
     }
     else if (filled_card.sdoc == DOC_PEDIATRICIAN){
         int msgsnd_pat_pediatr = msgsnd(msg_pat_pediatr, &filled_card, sizeof(filled_card) - sizeof(long), 0);
-        if(msgsnd_pat_pediatr == -1) report_error("[patient.c] error: msgsnd_pat_pediatr", 1);
+        if(msgsnd_pat_pediatr == -1) report_error("[patient.c] msgsnd_pat_pediatr", 1);
 
         int msgrcv_pat_pediatr = msgrcv(msg_pat_pediatr, &filled_card, sizeof(struct PatientCard) - sizeof(long), getpid(), 0);
         if (msgrcv_pat_pediatr == -1) report_error("[patient.c] msgrcv_pat_pediatr", 1);
@@ -214,7 +223,7 @@ int main(){
     }
     else if (filled_card.sdoc == DOC_SURGEON){
         int msgsnd_pat_surgeon = msgsnd(msg_pat_surgeon, &filled_card, sizeof(filled_card) - sizeof(long), 0);
-        if(msgsnd_pat_surgeon == -1) report_error("[patient.c] error: msgsnd_pat_surgeon", 1);
+        if(msgsnd_pat_surgeon == -1) report_error("[patient.c] msgsnd_pat_surgeon", 1);
 
         int msgrcv_pat_surgeon = msgrcv(msg_pat_surgeon, &filled_card, sizeof(struct PatientCard) - sizeof(long), getpid(), 0);
         if (msgrcv_pat_surgeon == -1) report_error("[patient.c] msgrcv_pat_surgeon", 1);
@@ -222,7 +231,7 @@ int main(){
         return 0;
     }
     else{
-        printf("|PATIENT %d| Examined by PC doctor. Going home...\n", getpid());
+        printf("|PATIENT %d| Examined by specialist doctor!\n", getpid());
 
         return 0;
     }

@@ -62,11 +62,11 @@ int main(){
         if(random < 145){
             filled_card.sdoc_dec = SENT_TO_WARD;
         }
-        else if(random < 850){
-            filled_card.sdoc_dec = SENT_HOME;
+        else if(random < 150){
+            filled_card.sdoc_dec = OTHER_S_HOSP;
         }
         else{
-            filled_card.sdoc_dec = OTHER_S_HOSP;
+            filled_card.sdoc_dec = SENT_HOME;
         }
 
 

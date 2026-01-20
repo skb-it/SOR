@@ -1,9 +1,16 @@
 *.o
+*.txt
 
 main
 patient
 doctor
 registration
+cardiologist
+pediatrician
+eyedoc
+laryngologist
+neurologist
+surgeon
 
 .vscode/
 *.swp

@@ -26,10 +26,10 @@ int main(){
     struct PatientCard filled_card;
 
     key_t key_msg_pat_cardio = ftok(FTOK_PATH, ID_MSG_PAT_CARDIO);
-    if(key_msg_pat_cardio == -1) report_error("[cardiologist.c] error: key_msg_pat_cardio", 1);
+    if(key_msg_pat_cardio == -1) report_error("[cardiologist.c] key_msg_pat_cardio", 1);
 
     int msg_pat_cardio = msgget(key_msg_pat_cardio, 0600 | IPC_CREAT);
-    if(msg_pat_cardio == -1) report_error("[cardiologist.c] error: msg_pat_cardio", 1);
+    if(msg_pat_cardio == -1) report_error("[cardiologist.c] msg_pat_cardio", 1);
 
     while(1){
         if(go_to_ward) {
@@ -60,15 +60,15 @@ int main(){
         if(random < 145) {
             filled_card.sdoc_dec = SENT_TO_WARD;
         }
-        else if(random < 850) {
-            filled_card.sdoc_dec = SENT_HOME;
+        else if(random < 150){
+            filled_card.sdoc_dec = OTHER_S_HOSP;
         }
         else{
-            filled_card.sdoc_dec = OTHER_S_HOSP;
+            filled_card.sdoc_dec = SENT_HOME;
         }
 
         int msgsnd_pat_cardio = msgsnd(msg_pat_cardio, &filled_card, sizeof(filled_card) - sizeof(long), 0);
-        if(msgsnd_pat_cardio == -1) report_error("[catdiologist.c] error: msgsnd_pat_cardio", 1);
+        if(msgsnd_pat_cardio == -1) report_error("[catdiologist.c] msgsnd_pat_cardio", 1);
 
         printf("|CARDIOLOGIST %d| Patient %d examinated!\n", getpid(), filled_card.patient_id);
 
