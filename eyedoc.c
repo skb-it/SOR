@@ -41,7 +41,6 @@ int main(){
         printf("|EYE DOCTOR %d| Waiting for a patient...\n", getpid());
 
         int msgrcv_pat_eyedoc = msgrcv(msg_pat_eyedoc, &filled_card, sizeof(struct PatientCard) - sizeof(long), -3, 0);
-        if(msgrcv_pat_eyedoc == -1) report_error("[eyedoc.c] msgrcv_pat_eyedoc", 1);
 
         if (msgrcv_pat_eyedoc == -1) {
             if (errno == EINTR) {

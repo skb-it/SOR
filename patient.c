@@ -16,33 +16,41 @@ void fill_pat_data(struct MsgBuffer *buf, int age, int is_guardian, int patient_
     buf->is_guardian= is_guardian;
 }
 
-void enter_waiting_room(int sem_id){
+void enter_waiting_room(int semget){
     struct sembuf sb;
     sb.sem_num = 0;
     sb.sem_op = -1;
     sb.sem_flg = SEM_UNDO;
 
-    int semop_enter_waiting_room = semop(sem_id, &sb, 1);
+    int semop_enter_waiting_room = semop(semget, &sb, 1);
     if(semop_enter_waiting_room == -1) report_error("[patient.c] semop_enter_waiting_room", 1);
 }
 
-void leave_waiting_room(int sem_id){
+void leave_waiting_room(int semget){
     struct sembuf sb;
     sb.sem_num = 0;
     sb.sem_op = 1;
     sb.sem_flg = SEM_UNDO;
 
-    int semop_leave_waiting_room = semop(sem_id, &sb, 1);
+    int semop_leave_waiting_room = semop(semget, &sb, 1);
     if(semop_leave_waiting_room == -1) report_error("[patient.c] semop_leave_waiting_room", 1);
 }
 
+void reserve_queue_place(int semget){
+    struct sembuf sb;
+    sb.sem_num = 0;
+    sb.sem_op = -1;
+    sb.sem_flg = SEM_UNDO;
 
+    int semop_give_info = semop(semget, &sb, 1);
+    if(semop_give_info == -1) report_error("[patient.c] semop_give_info", 1);
+}
 
 int main(){
 
     int has_guardian = 0;
     //GENERATING PATIENT AGE AND CHECKING IF GUARDIAN IS REQUIRED
-    srand(time(NULL) ^ getpid());
+    srand(time(NULL)^getpid());
     int age = rand() % 117;
 
     int patient_id = getpid();
@@ -89,6 +97,7 @@ int main(){
     struct MsgBuffer buf;
     fill_pat_data(&buf, age, has_guardian, patient_id);
 
+  
 
     //MESSAGE QUEUE PATIENT<->REGISTRATION
     key_t key_msg_pat_reg = ftok(FTOK_PATH, ID_MSG_PAT_REG);
@@ -98,6 +107,14 @@ int main(){
     int msg_pat_reg = msgget(key_msg_pat_reg, 0600 | IPC_CREAT);
     if(msg_pat_reg == -1) report_error("[patient.c] msg_pat_reg", 1);
 
+    //SEMAPHORE MESSAGE QUEUE PATIENT->REGISTRATION
+    key_t key_sem_msg_pat_reg = ftok(FTOK_PATH, ID_SEM_MSG_REG);
+    if(key_sem_msg_pat_reg == -1) report_error("[registration.c] key_sem_msg_pat_reg", 1);
+
+    int semget_msg_pat_reg = semget(key_sem_msg_pat_reg, 0, 0600);
+    if(semget_msg_pat_reg == -1) report_error("[registration.c] semget_msg_pat_reg", 1);
+
+    reserve_queue_place(semget_msg_pat_reg);
 
     //SHARING PATIENT DATA FOR REGISTRATION
     int msgsnd_pat_reg = msgsnd(msg_pat_reg, &buf, sizeof(buf) - sizeof(long), 0);

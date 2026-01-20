@@ -40,7 +40,6 @@ int main(){
         printf("|LARYNGOLOGIST %d| Waiting for a patient...\n", getpid());
 
         int msgrcv_pat_laryng = msgrcv(msg_pat_laryng, &filled_card, sizeof(struct PatientCard) - sizeof(long), -3, 0);
-        if (msgrcv_pat_laryng == -1) report_error("[laryngologist.c] msgrcv_pat_laryng", 1);
 
         if (msgrcv_pat_laryng == -1) {
             if (errno == EINTR) {

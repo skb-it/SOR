@@ -11,9 +11,8 @@ void evacuation(){
 }
 
 int main(){
-    //CTRL+C = EVACUATION OF ER
-    signal(SIGINT, evacuation);
-    
+    srand(time(NULL));
+
     printf("[DIRECTOR] Opening ER...\n");
 
     
@@ -22,10 +21,15 @@ int main(){
     int N;
     if(scanf("%d", &N) != 1 || N <= 0) report_error("Invalid N value", 1);
 
+
     //2 PIDS FOR REGISTRATION, 1 PID FOR GENERATOR, 1 PER SPECIALIZED DOCTOR (THERE ARE 6 OF THEM) , REST FOR PC DOCTORS
     pid_t pids[10];
+    for(int i = 0;i<10;i++){
+        pids[i] = 0;
+    }
 
-    pids[1] = 0;
+    //CTRL+C = EVACUATION OF ER
+    signal(SIGINT, evacuation);
 
     //SHARED MEMORY REGISTRATION<->DOCTOR
     key_t key_shm_reg_doc = ftok(FTOK_PATH, ID_SHM_REG_DOC);
@@ -47,6 +51,21 @@ int main(){
 
     int semctl_waiting_room = semctl(semget_waiting_room, 0 , SETVAL, sem);
     if(semctl_waiting_room == -1) report_error("[director.c] semtcl_waiting_room", 1);
+
+
+    //SEMAPHORE MESSAGE QUEUE PATIENT->REGISTRATION
+    key_t key_sem_msg_pat_reg = ftok(FTOK_PATH, ID_SEM_MSG_REG);
+    if(key_sem_msg_pat_reg == -1) report_error("[director.c] key_sem_msg_pat_reg", 1);
+
+    int semget_msg_pat_reg = semget(key_sem_msg_pat_reg, 1020, 0600 | IPC_CREAT); //  16384:16=1024 (1020 set for safety), 1024 = sizeof(MsgBUff)
+    if(semget_msg_pat_reg == -1) report_error("[director.c] semget_msg_pat_reg", 1);
+
+    unsigned short values[1020];
+    for(int i=0; i<1020;i++){
+        values[i]=1;
+    }
+    sem.array = values;
+    int semctl_msg_pat_reg = semctl(semget_msg_pat_reg, 0, SETALL, sem);
 
 
     //SEMAPHORE REGISTRATION<->DOCTOR
@@ -283,9 +302,13 @@ int main(){
     int msgctl_del_doc_pat = msgctl(msg_doc_pat, IPC_RMID, NULL);
     if(msgctl_del_doc_pat == -1) report_error("[director.c] msgctl_del_doc_pat", 1);
 
-    //DELETING WAITING ROOM SEMAPHORE
+    //DELETING SEMAPHORE WAITING ROOM
     int semctl_del_waiting_room = semctl(semget_waiting_room, 0, IPC_RMID, NULL);
     if(semctl_del_waiting_room == -1) report_error("[director.c] semtcl_del_waiting_room", 1);
+
+    //DELETING SEMAPHORE MESSAGE QUEUE PATIENT->REGISTRATION
+    int semctl_del_msg_pat_reg = semctl(semget_msg_pat_reg, 0, IPC_RMID, NULL);
+    if(semctl_del_msg_pat_reg == -1) report_error("[director.c] semctl_del_msg_pat_reg", 1);
   
     //DELETING SHARED MEMORY REGISTRATION->DOC
     int shmtcl_reg_doc_del = shmctl(shmget_reg_doc, IPC_RMID, NULL);

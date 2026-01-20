@@ -1,6 +1,15 @@
 #include "common.h"
 #include "errors.h"
 
+void free_queue_place(int semget){
+    struct sembuf sb;
+    sb.sem_num = 0;
+    sb.sem_op = 1;
+    sb.sem_flg = SEM_UNDO;
+
+    int semop_give_info = semop(semget, &sb, 1);
+    if(semop_give_info == -1) report_error("[patient.c] semop_give_info", 1);
+}
 
 int main(){
     printf("|REGISTRATION %d| Opening...\n", getpid());
@@ -24,6 +33,13 @@ int main(){
     struct PatientCard *card = shmat(shmget_reg_doc, NULL, 0);
     if(card == (void *)-1) report_error("[registration.c] shmat card", 1);
 
+
+    //SEMAPHORE MESSAGE QUEUE PATIENT->REGISTRATION
+    key_t key_sem_msg_pat_reg = ftok(FTOK_PATH, ID_SEM_MSG_REG);
+    if(key_sem_msg_pat_reg == -1) report_error("[registration.c] key_sem_msg_pat_reg", 1);
+
+    int semget_msg_pat_reg = semget(key_sem_msg_pat_reg, 0, 0600);
+    if(semget_msg_pat_reg == -1) report_error("[registration.c] semget_msg_pat_reg", 1);
 
 
 
@@ -67,6 +83,8 @@ int main(){
 
         int semop_signal_data_ready = semop(semget_doc, &signal_data_ready, 1);
         if(semop_signal_data_ready == -1) report_error("[registration.c] semop_signal_data_ready", 1);
+
+        free_queue_place(semget_msg_pat_reg);
     }
     
 

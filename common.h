@@ -29,18 +29,19 @@
 
 #define FTOK_PATH "."
 
-#define ID_SEM_WAITING_ROOM 'A'
-#define ID_SEM_DOC          'B'
-#define ID_SHM_PAT_REG      'C'
-#define ID_SHM_REG_DOC      'D'
-#define ID_MSG_PAT_DOC      'E'
-#define ID_MSG_PAT_REG      'F'
-#define ID_MSG_PAT_CARDIO   'G'
-#define ID_MSG_PAT_NEURO    'H'
-#define ID_MSG_PAT_EYE      'I'
-#define ID_MSG_PAT_LARYNG   'J'
-#define ID_MSG_PAT_SURGEON  'K'
-#define ID_MSG_PAT_PEDIATR  'L'
+#define ID_SEM_WAITING_ROOM 'a'
+#define ID_SEM_DOC          'b'
+#define ID_SEM_MSG_REG      'c'
+#define ID_SHM_PAT_REG      'd'
+#define ID_SHM_REG_DOC      'e'
+#define ID_MSG_PAT_DOC      'f'
+#define ID_MSG_PAT_REG      'g'
+#define ID_MSG_PAT_CARDIO   'h'
+#define ID_MSG_PAT_NEURO    'i'
+#define ID_MSG_PAT_EYE      'j'
+#define ID_MSG_PAT_LARYNG   'k'
+#define ID_MSG_PAT_SURGEON  'l'
+#define ID_MSG_PAT_PEDIATR  'm'
 
 
 

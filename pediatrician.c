@@ -40,7 +40,6 @@ int main(){
         printf("|PEDIATRICIAN %d| Waiting for a patient...\n", getpid());
 
         int msgrcv_pat_pediatr = msgrcv(msg_pat_pediatr, &filled_card, sizeof(struct PatientCard) - sizeof(long), -3, 0);
-        if (msgrcv_pat_pediatr == -1) report_error("[pediatrician.c] msgrcv_pat_pediatr", 1);
 
         if (msgrcv_pat_pediatr == -1) {
             if (errno == EINTR) {
