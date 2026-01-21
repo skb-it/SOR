@@ -31,10 +31,16 @@
 
 #define ID_SEM_WAITING_ROOM 'a'
 #define ID_SEM_DOC          'b'
+#define ID_SEM_MSG_CARDIO   'n'
+#define ID_SEM_MSG_EYEDOC   'o'
+#define ID_SEM_MSG_LARYNG   'p'
+#define ID_SEM_MSG_NEURO    'r'
+#define ID_SEM_MSG_PEDIATR  's'
+#define ID_SEM_MSG_SURGEON  't'
 #define ID_SEM_MSG_REG      'c'
 #define ID_SHM_PAT_REG      'd'
 #define ID_SHM_REG_DOC      'e'
-#define ID_MSG_PAT_DOC      'f'
+#define ID_MSG_PAT_DOC      'f' //consider something else
 #define ID_MSG_PAT_REG      'g'
 #define ID_MSG_PAT_CARDIO   'h'
 #define ID_MSG_PAT_NEURO    'i'
@@ -42,8 +48,6 @@
 #define ID_MSG_PAT_LARYNG   'k'
 #define ID_MSG_PAT_SURGEON  'l'
 #define ID_MSG_PAT_PEDIATR  'm'
-
-
 
 #define DOC_CARDIOLOGIST  1
 #define DOC_NEUROLOGIST   2
@@ -88,28 +92,6 @@ union semun {
     struct semid_ds *buf;
     unsigned short *array;
 };
-
-/*
-static void sem_lock(int semget){
-    struct sembuf sb;
-
-    sb.sem_num = 0;
-    sb.sem_op = -1;
-    sb.sem_flg = SEM_UNDO;
-
-    semop(semget, &sb, 1);
-}
-
-static void sem_unlock(int semget) {
-    struct sembuf sb;
-
-    sb.sem_num = 0;
-    sb.sem_op = 1;
-    sb.sem_flg = SEM_UNDO;
-
-    semop(semid, &sb, 1);
-}
-*/
 
 #define SHM_SIZE_INT sizeof(int)
 #define SHM_SIZE_CARD sizeof(struct PatientCard)

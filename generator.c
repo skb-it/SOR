@@ -2,18 +2,30 @@
 #include "errors.h"
 
 int main(){
-    signal(SIGCHLD, SIG_IGN);
+    
 
     srand(time(NULL) ^ getpid());
 
     //GENERATING PATIENTS
     while(1){
+        while(waitpid(-1, NULL, WNOHANG) > 0){
+
+        }
+
         pid_t pat = fork();
         if(pat == 0){
             execl("./patient", "patient", NULL);
-            report_error("[generator.c] error: pat = fork()", 1);
+            report_error("[generator.c] pat = fork()", 1);
         }
-        
+        else if (pat == -1) {
+            if (errno == EAGAIN) {
+                wait(NULL);
+                continue;
+            }
+            else {
+                report_error("[generator.c] pat = fork()", 1);
+            }
+        }
         
         //int time = (rand() %3 ) + 1;
         //sleep(time);

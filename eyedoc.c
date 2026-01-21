@@ -18,7 +18,15 @@ void visit_ward() {
     go_to_ward = 0;
 }
 
+void free_slot(int semget){
+    struct sembuf sb;
+    sb.sem_num = 0;
+    sb.sem_op = 1;
+    sb.sem_flg = SEM_UNDO;
 
+    int semop_free_slot_cardio = semop(semget, &sb, 1);
+    if(semop_free_slot_cardio == -1) report_error("[patient.c] semop_free_slot_cardio", 1);
+}
 
 int main(){
     signal(SIGUSR1, handle_signal);
@@ -27,11 +35,20 @@ int main(){
     
     struct PatientCard filled_card;
 
+    //MESSAGE QUEUE PATIENT<->EYE DOCTOR
     key_t key_msg_pat_eyedoc = ftok(FTOK_PATH, ID_MSG_PAT_EYE);
     if(key_msg_pat_eyedoc == -1) report_error("[eyedoc.c] error: key_msg_pat_eyedoc", 1);
 
     int msg_pat_eyedoc = msgget(key_msg_pat_eyedoc, 0600 | IPC_CREAT);
     if(msg_pat_eyedoc == -1) report_error("[eyedoc.c] error: msg_pat_eyedoc", 1);
+
+    //SEMAPHORE MESSAGE QUEUE PATIENT<->EYE DOCTOR
+    key_t key_sem_msg_pat_eyedoc = ftok(FTOK_PATH, ID_SEM_MSG_EYEDOC);
+    if(key_sem_msg_pat_eyedoc == -1) report_error("[director.c] key_sem_msg_pat_eyedoc", 1);
+
+    int semget_msg_pat_eyedoc = semget(key_sem_msg_pat_eyedoc, 510, 0600 | IPC_CREAT); //  16384:32=1024 (510 set for safety), sizeof(struct PatientCard) = 32
+    if(semget_msg_pat_eyedoc == -1) report_error("[director.c] semget_msg_pat_eyedoc", 1);
+
 
     while(1){
         if(go_to_ward) {
@@ -68,12 +85,26 @@ int main(){
             filled_card.sdoc_dec = SENT_HOME;
         }
 
-
-        int msgsnd_pat_eyedoc = msgsnd(msg_pat_eyedoc, &filled_card, sizeof(filled_card) - sizeof(long), 0);
-        if(msgsnd_pat_eyedoc == -1) report_error("[eyedoc.c] error: msgsnd_pat_eyedoc", 1);
+        int msg_sent = 0;
+        while (msg_sent != 1) {
+            int msgsnd_pat_eyedoc = msgsnd(msg_pat_eyedoc, &filled_card, sizeof(filled_card) - sizeof(long), 0);
+            if (msgsnd_pat_eyedoc == -1) {
+                if (errno == EINTR) {
+                    if(go_to_ward) {
+                        visit_ward();
+                    }
+                    continue; 
+                } 
+                else {
+                    report_error("[eyedoc.c] msgsnd_pat_cardio", 1);
+                }
+            }
+            msg_sent = 1;
+        }
 
         printf("|EYE DOCTOR %d| Patient %d examinated!\n", getpid(), filled_card.patient_id);
 
+        free_slot(semget_msg_pat_eyedoc);
         if(go_to_ward) {
             visit_ward();
         }
