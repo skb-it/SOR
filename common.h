@@ -94,7 +94,7 @@ union semun {
     unsigned short *array;
 };
 
-void free_slot(int semget){
+static void free_slot(int semget){
     struct sembuf sb;
     sb.sem_num = 0;
     sb.sem_op = 1;
