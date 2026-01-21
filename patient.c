@@ -197,7 +197,7 @@ int main(){
         key_t key_sem_msg_pat_cardio = ftok(FTOK_PATH, ID_SEM_MSG_CARDIO);
         if(key_sem_msg_pat_cardio == -1) report_error("[director.c] key_sem_msg_pat_cardio", 1);
 
-        int semget_msg_pat_cardio = semget(key_sem_msg_pat_cardio, 510, 0600 | IPC_CREAT); //  16384:32=512, sizeof(struct PatientCard) = 32
+        int semget_msg_pat_cardio = semget(key_sem_msg_pat_cardio, 1, 0600 | IPC_CREAT); //  16384:32=512, sizeof(struct PatientCard) = 32
         if(semget_msg_pat_cardio == -1) report_error("[director.c] semget_msg_pat_cardio", 1);
 
         reserve_queue_place(semget_msg_pat_cardio);
@@ -214,7 +214,7 @@ int main(){
         key_t key_sem_msg_pat_eyedoc = ftok(FTOK_PATH, ID_SEM_MSG_EYEDOC);
         if(key_sem_msg_pat_eyedoc == -1) report_error("[director.c] key_sem_msg_pat_eyedoc", 1);
 
-        int semget_msg_pat_eyedoc = semget(key_sem_msg_pat_eyedoc, 510, 0600 | IPC_CREAT); //  16384:32=1024, sizeof(struct PatientCard) = 32
+        int semget_msg_pat_eyedoc = semget(key_sem_msg_pat_eyedoc, 1, 0600 | IPC_CREAT); //  16384:32=1024, sizeof(struct PatientCard) = 32
         if(semget_msg_pat_eyedoc == -1) report_error("[director.c] semget_msg_pat_eyedoc", 1);
 
         reserve_queue_place(semget_msg_pat_eyedoc);
@@ -231,7 +231,7 @@ int main(){
         key_t key_sem_msg_pat_laryng = ftok(FTOK_PATH, ID_SEM_MSG_LARYNG);
         if(key_sem_msg_pat_laryng == -1) report_error("[director.c] key_sem_msg_pat_laryng", 1);
 
-        int semget_msg_pat_laryng = semget(key_sem_msg_pat_laryng, 510, 0600 | IPC_CREAT); //  16384:32=1024, sizeof(struct PatientCard) = 32
+        int semget_msg_pat_laryng = semget(key_sem_msg_pat_laryng, 1, 0600 | IPC_CREAT); //  16384:32=1024, sizeof(struct PatientCard) = 32
         if(semget_msg_pat_laryng == -1) report_error("[director.c] semget_msg_pat_laryng", 1);
 
         reserve_queue_place(semget_msg_pat_laryng);
@@ -248,7 +248,7 @@ int main(){
         key_t key_sem_msg_pat_neuro = ftok(FTOK_PATH, ID_SEM_MSG_NEURO);
         if(key_sem_msg_pat_neuro == -1) report_error("[director.c] key_sem_msg_pat_neuro", 1);
 
-        int semget_msg_pat_neuro = semget(key_sem_msg_pat_neuro, 510, 0600 | IPC_CREAT); //  16384:32=1024, sizeof(struct PatientCard) = 32
+        int semget_msg_pat_neuro = semget(key_sem_msg_pat_neuro, 1, 0600 | IPC_CREAT); //  16384:32=1024, sizeof(struct PatientCard) = 32
         if(semget_msg_pat_neuro == -1) report_error("[director.c] semget_msg_pat_neuro", 1);
 
         reserve_queue_place(semget_msg_pat_neuro);
@@ -265,7 +265,7 @@ int main(){
         key_t key_sem_msg_pat_pediatr = ftok(FTOK_PATH, ID_SEM_MSG_PEDIATR);
         if(key_sem_msg_pat_pediatr == -1) report_error("[director.c] key_sem_msg_pat_pediatr", 1);
 
-        int semget_msg_pat_pediatr = semget(key_sem_msg_pat_pediatr, 510, 0600 | IPC_CREAT); //  16384:32=1024, sizeof(struct PatientCard) = 32
+        int semget_msg_pat_pediatr = semget(key_sem_msg_pat_pediatr, 1, 0600 | IPC_CREAT); //  16384:32=1024, sizeof(struct PatientCard) = 32
         if(semget_msg_pat_pediatr == -1) report_error("[director.c] semget_msg_pat_pediatr", 1);
 
         reserve_queue_place(semget_msg_pat_pediatr);
@@ -282,7 +282,7 @@ int main(){
         key_t key_sem_msg_pat_surgeon = ftok(FTOK_PATH, ID_SEM_MSG_SURGEON);
         if(key_sem_msg_pat_surgeon == -1) report_error("[director.c] key_sem_msg_pat_surgeon", 1);
 
-        int semget_msg_pat_surgeon = semget(key_sem_msg_pat_surgeon, 510, 0600 | IPC_CREAT); //  16384:32=1024, sizeof(struct PatientCard) = 32
+        int semget_msg_pat_surgeon = semget(key_sem_msg_pat_surgeon, 1, 0600 | IPC_CREAT); //  16384:32=1024, sizeof(struct PatientCard) = 32
         if(semget_msg_pat_surgeon == -1) report_error("[director.c] semget_msg_pat_surgeon", 1);
 
         reserve_queue_place(semget_msg_pat_surgeon);

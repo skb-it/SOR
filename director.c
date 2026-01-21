@@ -57,15 +57,11 @@ int main(){
     key_t key_sem_msg_pat_reg = ftok(FTOK_PATH, ID_SEM_MSG_REG);
     if(key_sem_msg_pat_reg == -1) report_error("[director.c] key_sem_msg_pat_reg", 1);
 
-    int semget_msg_pat_reg = semget(key_sem_msg_pat_reg, 1020, 0600 | IPC_CREAT); //  16384:16=1024 (1020 set for safety), 1024 = sizeof(MsgBUff)
+    int semget_msg_pat_reg = semget(key_sem_msg_pat_reg, 1, 0600 | IPC_CREAT); 
     if(semget_msg_pat_reg == -1) report_error("[director.c] semget_msg_pat_reg", 1);
 
-    unsigned short values[1020];
-    for(int i=0; i<1020;i++){
-        values[i]=1;
-    }
-    sem.array = values;
-    int semctl_msg_pat_reg = semctl(semget_msg_pat_reg, 0, SETALL, sem);
+    sem.val = 1020; //  16384:16=1024 (1020 set for safety), 1024 = sizeof(MsgBUff)
+    int semctl_msg_pat_reg = semctl(semget_msg_pat_reg, 0, SETVAL, sem);
     if(semctl_msg_pat_reg == -1) report_error("[director.c] semctl_msg_pat_reg",1);
 
 
@@ -89,10 +85,11 @@ int main(){
     key_t key_sem_msg_pat_cardio = ftok(FTOK_PATH, ID_SEM_MSG_CARDIO);
     if(key_sem_msg_pat_cardio == -1) report_error("[director.c] key_sem_msg_pat_cardio", 1);
 
-    int semget_msg_pat_cardio = semget(key_sem_msg_pat_cardio, 510, 0600 | IPC_CREAT); //  16384:32=512 (510 set for safety), sizeof(struct PatientCard) = 32
+    int semget_msg_pat_cardio = semget(key_sem_msg_pat_cardio, 1, 0600 | IPC_CREAT); //  16384:32=512 (510 set for safety), sizeof(struct PatientCard) = 32
     if(semget_msg_pat_cardio == -1) report_error("[director.c] semget_msg_pat_cardio", 1);
 
-    int semctl_msg_pat_cardio = semctl(semget_msg_pat_cardio, 0, SETALL, sem);
+    sem.val = 510; //  16384:32=512 (510 set for safety), sizeof(struct PatientCard) = 32
+    int semctl_msg_pat_cardio = semctl(semget_msg_pat_cardio, 0, SETVAL, sem);
     if(semctl_msg_pat_cardio == -1) report_error("[director.c] semctl_msg_pat_cardio",1);
 
 
@@ -100,10 +97,10 @@ int main(){
     key_t key_sem_msg_pat_eyedoc = ftok(FTOK_PATH, ID_SEM_MSG_EYEDOC);
     if(key_sem_msg_pat_eyedoc == -1) report_error("[director.c] key_sem_msg_pat_eyedoc", 1);
 
-    int semget_msg_pat_eyedoc = semget(key_sem_msg_pat_eyedoc, 510, 0600 | IPC_CREAT); //  16384:32=1024 (510 set for safety), sizeof(struct PatientCard) = 32
+    int semget_msg_pat_eyedoc = semget(key_sem_msg_pat_eyedoc, 1, 0600 | IPC_CREAT); 
     if(semget_msg_pat_eyedoc == -1) report_error("[director.c] semget_msg_pat_eyedoc", 1);
 
-    int semctl_msg_pat_eyedoc = semctl(semget_msg_pat_eyedoc, 0, SETALL, sem);
+    int semctl_msg_pat_eyedoc = semctl(semget_msg_pat_eyedoc, 0, SETVAL, sem);
     if(semctl_msg_pat_eyedoc == -1) report_error("[director.c] semctl_msg_pat_eyedoc",1);
 
 
@@ -111,10 +108,10 @@ int main(){
     key_t key_sem_msg_pat_laryng = ftok(FTOK_PATH, ID_SEM_MSG_LARYNG);
     if(key_sem_msg_pat_laryng == -1) report_error("[director.c] key_sem_msg_pat_laryng", 1);
 
-    int semget_msg_pat_laryng = semget(key_sem_msg_pat_laryng, 510, 0600 | IPC_CREAT); //  16384:32=1024, sizeof(struct PatientCard) = 32
+    int semget_msg_pat_laryng = semget(key_sem_msg_pat_laryng, 1, 0600 | IPC_CREAT);
     if(semget_msg_pat_laryng == -1) report_error("[director.c] semget_msg_pat_laryng", 1);
 
-    int semctl_msg_pat_laryng = semctl(semget_msg_pat_laryng, 0, SETALL, sem);
+    int semctl_msg_pat_laryng = semctl(semget_msg_pat_laryng, 0, SETVAL, sem);
     if(semctl_msg_pat_laryng == -1) report_error("[director.c] semctl_msg_pat_laryng",1);
 
 
@@ -122,10 +119,10 @@ int main(){
     key_t key_sem_msg_pat_neuro = ftok(FTOK_PATH, ID_SEM_MSG_NEURO);
     if(key_sem_msg_pat_neuro == -1) report_error("[director.c] key_sem_msg_pat_neuro", 1);
 
-    int semget_msg_pat_neuro = semget(key_sem_msg_pat_neuro, 510, 0600 | IPC_CREAT); //  16384:32=1024, sizeof(struct PatientCard) = 32
+    int semget_msg_pat_neuro = semget(key_sem_msg_pat_neuro, 1, 0600 | IPC_CREAT);
     if(semget_msg_pat_neuro == -1) report_error("[director.c] semget_msg_pat_neuro", 1);
 
-    int semctl_msg_pat_neuro = semctl(semget_msg_pat_neuro, 0, SETALL, sem);
+    int semctl_msg_pat_neuro = semctl(semget_msg_pat_neuro, 0, SETVAL, sem);
     if(semctl_msg_pat_neuro == -1) report_error("[director.c] semctl_msg_pat_neuro",1);
 
 
@@ -133,10 +130,10 @@ int main(){
     key_t key_sem_msg_pat_pediatr = ftok(FTOK_PATH, ID_SEM_MSG_PEDIATR);
     if(key_sem_msg_pat_pediatr == -1) report_error("[director.c] key_sem_msg_pat_pediatr", 1);
 
-    int semget_msg_pat_pediatr = semget(key_sem_msg_pat_pediatr, 510, 0600 | IPC_CREAT); //  16384:32=1024, sizeof(struct PatientCard) = 32
+    int semget_msg_pat_pediatr = semget(key_sem_msg_pat_pediatr, 1, 0600 | IPC_CREAT); 
     if(semget_msg_pat_pediatr == -1) report_error("[director.c] semget_msg_pat_pediatr", 1);
 
-    int semctl_msg_pat_pediatr = semctl(semget_msg_pat_pediatr, 0, SETALL, sem);
+    int semctl_msg_pat_pediatr = semctl(semget_msg_pat_pediatr, 0, SETVAL, sem);
     if(semctl_msg_pat_pediatr == -1) report_error("[director.c] semctl_msg_pat_pediatr",1);
 
 
@@ -144,10 +141,10 @@ int main(){
     key_t key_sem_msg_pat_surgeon = ftok(FTOK_PATH, ID_SEM_MSG_SURGEON);
     if(key_sem_msg_pat_surgeon == -1) report_error("[director.c] key_sem_msg_pat_surgeon", 1);
 
-    int semget_msg_pat_surgeon = semget(key_sem_msg_pat_surgeon, 510, 0600 | IPC_CREAT); //  16384:32=1024, sizeof(struct PatientCard) = 32
+    int semget_msg_pat_surgeon = semget(key_sem_msg_pat_surgeon, 1, 0600 | IPC_CREAT); 
     if(semget_msg_pat_surgeon == -1) report_error("[director.c] semget_msg_pat_surgeon", 1);
 
-    int semctl_msg_pat_surgeon = semctl(semget_msg_pat_surgeon, 0, SETALL, sem);
+    int semctl_msg_pat_surgeon = semctl(semget_msg_pat_surgeon, 0, SETVAL, sem);
     if(semctl_msg_pat_surgeon == -1) report_error("[director.c] semctl_msg_pat_surgeon",1);
 
 
@@ -328,7 +325,7 @@ int main(){
         }
         else if(patients_in_queue<(N/3) && pids[1] > 0){
             printf("|DIRECTOR| Queue is too short - closing second registration...\n");
-            kill(pids[1], SIGTERM);
+            kill(pids[1], SIGUSR2);
             waitpid(pids[1], NULL, 0);
             pids[1] = 0;
         }

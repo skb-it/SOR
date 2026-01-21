@@ -1,17 +1,29 @@
 #include "common.h"
 #include "errors.h"
 
+
+volatile int reg_close = 0;
+
+void handle_close(int sig){
+    reg_close = 1;
+}
+
 void free_queue_place(int semget){
     struct sembuf sb;
     sb.sem_num = 0;
     sb.sem_op = 1;
     sb.sem_flg = SEM_UNDO;
 
-    int semop_give_info = semop(semget, &sb, 1);
-    if(semop_give_info == -1) report_error("[patient.c] semop_give_info", 1);
+    while(semop(semget, &sb, 1) == -1) {
+        if(errno != EINTR) report_error("[registration.c] semop_give_info", 1);
+    }
 }
 
+
 int main(){
+
+    signal(SIGUSR2, handle_close);
+
     printf("|REGISTRATION %d| Opening...\n", getpid());
     
     //MESSAGE QUEUE PATIENT->REGISTRATION
@@ -63,16 +75,33 @@ int main(){
     printf("|REGISTRATION %d| Opened!\n", getpid());
 
     while(1){
+        if (reg_close == 1){
+            printf("|REGISTRATION %d| Closing registration...\n", getpid());
+            break;
+        }
+
         int msgrcv_pat_reg = msgrcv(msg_pat_reg, &buf, sizeof(buf) - sizeof(long), -3, 0);
         if(msgrcv_pat_reg == -1) report_error("[registration.c] msgrcv_pat_reg", 1);
+
+        if(msgrcv_pat_reg == -1) {
+            if (errno == EINTR) {
+                if(reg_close == 1) {
+                    printf("|REGISTRATION %d| Closing registration...\n", getpid());
+                    break;
+                }
+                continue;
+            }
+            report_error("[registration.c] msgrcv_pat_reg", 1);
+        }
 
         printf("|REGISTRATION %d| Patient %d came!\n", getpid(), buf.patient_id);
         //sleep(2);
 
         printf("|REGISTRATION %d| Waiting for free doctor slot...\n", getpid());
-        int semop_wait_empty = semop(semget_doc, &wait_empty, 1);
-        if (semop_wait_empty == -1) report_error("[registration.c] semop_wait_empty", 1);
 
+        while(semop(semget_doc, &wait_empty, 1) == -1) {
+             if(errno != EINTR) report_error("[registration.c] semop_wait_empty", 1);
+        }
 
         card->age = buf.age;
         card->patient_id = buf.patient_id;
@@ -81,8 +110,9 @@ int main(){
 
         printf("|REGISTRATION %d| Patient %d forwarded to primary care doctor!", getpid(), card->patient_id);
 
-        int semop_signal_data_ready = semop(semget_doc, &signal_data_ready, 1);
-        if(semop_signal_data_ready == -1) report_error("[registration.c] semop_signal_data_ready", 1);
+        while(semop(semget_doc, &signal_data_ready, 1) == -1) {
+             if(errno != EINTR) report_error("[registration.c] semop_signal_data_ready", 1);
+        }
 
         free_queue_place(semget_msg_pat_reg);
     }
