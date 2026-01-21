@@ -73,10 +73,10 @@ int main(){
     wait_empty.sem_op = -1;
     wait_empty.sem_flg = SEM_UNDO;
 
-    struct sembuf signal_data_ready;
-    signal_data_ready.sem_num = 1;
-    signal_data_ready.sem_op = 1;
-    signal_data_ready.sem_flg = SEM_UNDO;
+    struct sembuf data_ready;
+    data_ready.sem_num = 1;
+    data_ready.sem_op = 1;
+    data_ready.sem_flg = SEM_UNDO;
 
     printf("|REGISTRATION %d| Opened!\n", getpid());
 
@@ -121,8 +121,8 @@ int main(){
 
         printf("|REGISTRATION %d| Patient %d forwarded to primary care doctor!", getpid(), card->patient_id);
 
-        while(semop(semget_doc, &signal_data_ready, 1) == -1) {
-             if(errno != EINTR) report_error("[registration.c] semop_signal_data_ready", 1);
+        while(semop(semget_doc, &data_ready, 1) == -1) {
+             if(errno != EINTR) report_error("[registration.c] semop_data_ready", 1);
         }
 
         if(reg_close == 1){
