@@ -80,6 +80,16 @@ int main(){
     int semctl_card_doc_reg = semctl(semget_doc, 1 , SETVAL, sem);
     if(semctl_card_doc_reg == -1) report_error("[director.c] semtcl_card_doc_reg", 1);
 
+    //SEMAPHORE MESSAGE QUEUE PATIENT<->PC DOCTOR
+    key_t key_sem_msg_pat_doc = ftok(FTOK_PATH, ID_SEM_MSG_PAT_DOC);
+    if(key_sem_msg_pat_doc == -1) report_error("[patient.c] key_sem_msg_pat_doc", 1);
+
+    int semget_msg_pat_doc = semget(key_sem_msg_pat_doc, 1, 0600);
+    if(semget_msg_pat_doc == -1) report_error("[director.c] semget_msg_pat_doc", 1);
+
+    sem.val = 250;
+    int semctl_msg_pat_doc = semctl(semget_msg_pat_doc, 0, SETVAL, sem);
+    if(semctl_msg_pat_doc == -1) report_error("[director.c] semctl_msg_pat_doc", 1);
 
     //SEMAPHORE MESSAGE QUEUE PATIENT<->CARDIOLOGIST
     key_t key_sem_msg_pat_cardio = ftok(FTOK_PATH, ID_SEM_MSG_CARDIO);
@@ -88,7 +98,7 @@ int main(){
     int semget_msg_pat_cardio = semget(key_sem_msg_pat_cardio, 1, 0600 | IPC_CREAT);
     if(semget_msg_pat_cardio == -1) report_error("[director.c] semget_msg_pat_cardio", 1);
 
-    sem.val = 250;
+    
     int semctl_msg_pat_cardio = semctl(semget_msg_pat_cardio, 0, SETVAL, sem);
     if(semctl_msg_pat_cardio == -1) report_error("[director.c] semctl_msg_pat_cardio",1);
 
@@ -346,7 +356,6 @@ int main(){
 
 
     //CLEANING
-
     for(int i=0; i < 10; i++){ 
         if(pids[i] > 0) {
             kill(pids[i], SIGTERM);

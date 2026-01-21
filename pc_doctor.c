@@ -64,11 +64,20 @@ int main(){
     struct PatientCard *card = shmat(shmget_reg_doc, NULL, 0);
     if(card == (void *)-1) report_error("[pc_doctor.c] shmat card", 1);
 
-    //MESSAGE QUEUE DOCTOR<->PATIENT
+
+    //MESSAGE QUEUE PC PATIENT<->PC DOCTOR
     key_t key_msg_doc_pat = ftok(FTOK_PATH, ID_MSG_PAT_DOC);
     if(key_msg_doc_pat == -1) report_error("[pc_doctor.c] key_msg_doc_pat", 1);
     int msg_doc_pat = msgget(key_msg_doc_pat, 0600 | IPC_CREAT);
     if(msg_doc_pat == -1) report_error("[pc_doctor.c] msg_doc_pat", 1);
+
+
+    //SEMAPHORE MESSAGE QUEUE PATIENT<->PC DOCTOR
+    key_t key_sem_msg_pat_doc = ftok(FTOK_PATH, ID_SEM_MSG_PAT_DOC);
+    if(key_sem_msg_pat_doc == -1) report_error("[pc_doctor.c] key_sem_msg_pat_doc", 1);
+
+    int semget_msg_pat_doc = semget(key_sem_msg_pat_doc, 1, 0600);
+    if(semget_msg_pat_doc == -1) report_error("[pc_doctor.c] semget_msg_pat_doc", 1);
 
 
     //SEMAPHORE DOCTOR
@@ -81,12 +90,12 @@ int main(){
     struct sembuf wait_for_data;
     wait_for_data.sem_num = 1;
     wait_for_data.sem_op = -1;
-    wait_for_data.sem_flg = 0;
+    wait_for_data.sem_flg = SEM_UNDO;
 
     struct sembuf signal_slot_free;
     signal_slot_free.sem_num = 0;
     signal_slot_free.sem_op = 1;
-    signal_slot_free.sem_flg = 0;
+    signal_slot_free.sem_flg = SEM_UNDO;
 
 
     while(1){
@@ -119,6 +128,8 @@ int main(){
         }
 
         printf("|DOCTOR %d| Patient %d examinated!\n", getpid(), local_card.patient_id);
+
+        free_slot(semget_msg_pat_doc);
     }
 
 

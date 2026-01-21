@@ -18,15 +18,7 @@ void visit_ward() {
     go_to_ward = 0;
 }
 
-void free_slot(int semget){
-    struct sembuf sb;
-    sb.sem_num = 0;
-    sb.sem_op = 1;
-    sb.sem_flg = SEM_UNDO;
 
-    int semop_free_slot_cardio = semop(semget, &sb, 1);
-    if(semop_free_slot_cardio == -1) report_error("[patient.c] semop_free_slot_cardio", 1);
-}
 
 int main(){
     signal(SIGUSR1, handle_signal);

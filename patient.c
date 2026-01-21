@@ -134,6 +134,15 @@ int main(){
     int msg_doc_pat = msgget(key_msg_doc_pat, 0600 | IPC_CREAT);
     if(msg_doc_pat == -1) report_error("[patient.c] msg_doc_pat", 1);
 
+    //SEMAPHORE MESSAGE QUEUE PATIENT<->PC DOCTOR
+    key_t key_sem_msg_pat_doc = ftok(FTOK_PATH, ID_SEM_MSG_PAT_DOC);
+    if(key_sem_msg_pat_doc == -1) report_error("[patient.c] key_sem_msg_pat_doc", 1);
+
+    int semget_msg_pat_doc = semget(key_sem_msg_pat_doc, 1, 0600);
+    if(semget_msg_pat_doc == -1) report_error("[patient.c] semget_msg_pat_doc", 1);
+
+    reserve_queue_place(semget_msg_pat_doc);
+
     struct PatientCard filled_card;
 
     int msgrcv_pat_doc = msgrcv(msg_doc_pat, &filled_card, sizeof(struct PatientCard) - sizeof(long), getpid(), 0);
