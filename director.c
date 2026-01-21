@@ -22,7 +22,7 @@ int main(){
     if(scanf("%d", &N) != 1 || N <= 0) report_error("Invalid N value", 1);
 
 
-    //2 PIDS FOR REGISTRATION, 1 PID FOR GENERATOR, 1 PER SPECIALIZED DOCTOR (THERE ARE 6 OF THEM) , REST FOR PC DOCTORS
+    //2 PIDS FOR REGISTRATION, 1 PID FOR GENERATOR, 1 PER SPECIALIZED DOCTOR (THERE ARE 6 OF THEM) , 1 PID FOR PC DOCTOR
     pid_t pids[10];
     for(int i = 0;i<10;i++){
         pids[i] = 0;
@@ -85,10 +85,10 @@ int main(){
     key_t key_sem_msg_pat_cardio = ftok(FTOK_PATH, ID_SEM_MSG_CARDIO);
     if(key_sem_msg_pat_cardio == -1) report_error("[director.c] key_sem_msg_pat_cardio", 1);
 
-    int semget_msg_pat_cardio = semget(key_sem_msg_pat_cardio, 1, 0600 | IPC_CREAT); //  16384:32=512 (510 set for safety), sizeof(struct PatientCard) = 32
+    int semget_msg_pat_cardio = semget(key_sem_msg_pat_cardio, 1, 0600 | IPC_CREAT);
     if(semget_msg_pat_cardio == -1) report_error("[director.c] semget_msg_pat_cardio", 1);
 
-    sem.val = 510; //  16384:32=512 (510 set for safety), sizeof(struct PatientCard) = 32
+    sem.val = 250;
     int semctl_msg_pat_cardio = semctl(semget_msg_pat_cardio, 0, SETVAL, sem);
     if(semctl_msg_pat_cardio == -1) report_error("[director.c] semctl_msg_pat_cardio",1);
 
