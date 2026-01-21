@@ -2,7 +2,7 @@
 #include "errors.h"
 #include <signal.h>
 
-volatile sig_atomic_t is_ER_open = 1;
+volatile int is_ER_open = 1;
 
 
 void evacuation(){

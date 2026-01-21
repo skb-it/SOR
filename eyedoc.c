@@ -46,7 +46,7 @@ int main(){
     key_t key_sem_msg_pat_eyedoc = ftok(FTOK_PATH, ID_SEM_MSG_EYEDOC);
     if(key_sem_msg_pat_eyedoc == -1) report_error("[director.c] key_sem_msg_pat_eyedoc", 1);
 
-    int semget_msg_pat_eyedoc = semget(key_sem_msg_pat_eyedoc, 510, 0600 | IPC_CREAT); //  16384:32=1024 (510 set for safety), sizeof(struct PatientCard) = 32
+    int semget_msg_pat_eyedoc = semget(key_sem_msg_pat_eyedoc, 1, 0600 | IPC_CREAT);
     if(semget_msg_pat_eyedoc == -1) report_error("[director.c] semget_msg_pat_eyedoc", 1);
 
 

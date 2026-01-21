@@ -46,8 +46,9 @@ int main(){
     key_t key_sem_msg_pat_laryng = ftok(FTOK_PATH, ID_SEM_MSG_LARYNG);
     if(key_sem_msg_pat_laryng == -1) report_error("[director.c] key_sem_msg_pat_laryng", 1);
 
-    int semget_msg_pat_laryng = semget(key_sem_msg_pat_laryng, 510, 0600 | IPC_CREAT); //  16384:32=1024, sizeof(struct PatientCard) = 32
+    int semget_msg_pat_laryng = semget(key_sem_msg_pat_laryng, 1, 0600 | IPC_CREAT);
     if(semget_msg_pat_laryng == -1) report_error("[director.c] semget_msg_pat_laryng", 1);
+
 
     while(1){
         if(go_to_ward) {

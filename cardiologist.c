@@ -46,7 +46,7 @@ int main(){
     key_t key_sem_msg_pat_cardio = ftok(FTOK_PATH, ID_SEM_MSG_CARDIO);
     if(key_sem_msg_pat_cardio == -1) report_error("[director.c] key_sem_msg_pat_cardio", 1);
 
-    int semget_msg_pat_cardio = semget(key_sem_msg_pat_cardio, 510, 0600 | IPC_CREAT); //  16384:32=512 (510 set for safety), sizeof(struct PatientCard) = 32
+    int semget_msg_pat_cardio = semget(key_sem_msg_pat_cardio, 1, 0600 | IPC_CREAT);
     if(semget_msg_pat_cardio == -1) report_error("[director.c] semget_msg_pat_cardio", 1);
 
 
@@ -106,7 +106,7 @@ int main(){
         printf("|CARDIOLOGIST %d| Patient %d examinated!\n", getpid(), filled_card.patient_id);
 
         free_slot(semget_msg_pat_cardio);
-        
+
         if(go_to_ward) {
             visit_ward();
         }
