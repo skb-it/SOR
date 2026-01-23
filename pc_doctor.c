@@ -24,7 +24,7 @@ void asses_doc(struct PatientCard *card){
 
 
 void triage(struct PatientCard *card){
-    printf("|DOCTOR %d| Examining Patient %d...\n", getpid(), card->patient_id);
+    LOG_PRINTF("|DOCTOR %d| Examining Patient %d...", getpid(), card->patient_id);
     //sleep(2);
 
     int random = rand() % 100;
@@ -99,22 +99,30 @@ int main(){
 
 
     while(1){
-        printf("|DOCTOR %d| Waiting for a patient card...\n", getpid());
+        LOG_PRINTF("|DOCTOR %d| Waiting for a patient card...", getpid());
 
         int semop_wait = semop(semget_doc, &wait_for_data, 1);
-        if(semop_wait == -1) report_error("[pc_doctor.c] semop_wait", 1);
+        if(semop_wait == -1) {
+            if(errno == EINTR) continue;
+            report_error("[pc_doctor.c] semop_wait", 1);
+        }
 
         struct PatientCard local_card = *card;
 
-        printf("|DOCTOR %d| Received Patient %d card!\n", getpid(), local_card.patient_id);
+        LOG_PRINTF("|DOCTOR %d| Received Patient %d card!", getpid(), local_card.patient_id);
 
-        int semop_slot_free = semop(semget_doc, &signal_slot_free, 1);
-        if (semop_slot_free == -1) report_error("[pc_doctor.c] semop_slot_free", 1);
+        // Signal that slot is now free
+        while(semop(semget_doc, &signal_slot_free, 1) == -1) {
+            if(errno == EINTR) continue;
+            report_error("[pc_doctor.c] semop_slot_free", 1);
+            break;
+        }
 
         triage(&local_card);
         //sleep(1);
         if(local_card.triage == SENT_HOME){
             struct PatientCard filled_card = local_card;
+            filled_card.mtype = filled_card.patient_id;
             int msgsnd_doc_pat = msgsnd(msg_doc_pat, &filled_card, sizeof(struct PatientCard) - sizeof(long), 0);
             if(msgsnd_doc_pat == -1) report_error("[pc_doctor.c] msgsnd_doc_pat", 1);
         }
@@ -127,9 +135,10 @@ int main(){
             if(msgsnd_doc_pat == -1) report_error("[pc_doctor.c] msgsnd_doc_pat", 1);
         }
 
-        printf("|DOCTOR %d| Patient %d examinated!\n", getpid(), local_card.patient_id);
+        LOG_PRINTF("|DOCTOR %d| Patient %d examinated!", getpid(), local_card.patient_id);
 
         free_slot(semget_msg_pat_doc);
+        increment_pc_doctor_count();
     }
 
 

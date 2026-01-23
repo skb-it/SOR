@@ -22,8 +22,11 @@ void enter_waiting_room(int semget){
     sb.sem_op = -1;
     sb.sem_flg = SEM_UNDO;
 
-    int semop_enter_waiting_room = semop(semget, &sb, 1);
-    if(semop_enter_waiting_room == -1) report_error("[patient.c] semop_enter_waiting_room", 1);
+    while(semop(semget, &sb, 1) == -1) {
+        if(errno == EINTR) continue;
+        report_error("[patient.c] semop_enter_waiting_room", 1);
+        break;
+    }
 }
 
 void leave_waiting_room(int semget){
@@ -32,8 +35,11 @@ void leave_waiting_room(int semget){
     sb.sem_op = 1;
     sb.sem_flg = SEM_UNDO;
 
-    int semop_leave_waiting_room = semop(semget, &sb, 1);
-    if(semop_leave_waiting_room == -1) report_error("[patient.c] semop_leave_waiting_room", 1);
+    while(semop(semget, &sb, 1) == -1) {
+        if(errno == EINTR) continue;
+        report_error("[patient.c] semop_leave_waiting_room", 1);
+        break;
+    }
 }
 
 void reserve_queue_place(int semget){
@@ -42,8 +48,11 @@ void reserve_queue_place(int semget){
     sb.sem_op = -1;
     sb.sem_flg = SEM_UNDO;
 
-    int semop_give_info = semop(semget, &sb, 1);
-    if(semop_give_info == -1) report_error("[patient.c] semop_give_info", 1);
+    while(semop(semget, &sb, 1) == -1) {
+        if(errno == EINTR) continue;
+        report_error("[patient.c] semop_give_info", 1);
+        break;
+    }
 }
 
 int main(){
@@ -54,6 +63,7 @@ int main(){
     int age = rand() % 117;
 
     int patient_id = getpid();
+    pid_t guardian_pid = 0;
     
 
     if(age < 18){
@@ -65,16 +75,14 @@ int main(){
 
         //GUARDIAN PROCESS
         if(pid > 0){
-            printf("[GUARDIAN %d] Coming with my child.\n", getpid());
-            wait(NULL);
-            printf("[GUARDIAN %d] My child is examinated.\n", getpid());
-
-            return 0;
+            LOG_PRINTF("[GUARDIAN %d] Coming with my child.", getpid());
+            guardian_pid = pid;
+            //WAIT FOR CHILD AT THE END OF PROGRAM
         }
-
-        //GETTING PATIENT PID
-        patient_id = getpid();
-        
+        else {
+            //GETTING PATIENT PID
+            patient_id = getpid();
+        }
     }
                 //GUARDIAN+CHILD PROCESS
 
@@ -85,12 +93,12 @@ int main(){
     int semget_waiting_room = semget(key_sem_waiting_room, 1, 0600);
     if(semget_waiting_room == -1) report_error("[patient.c] semget_waiting_room", 1);
 
-    printf("[PATIENT %d] Trying to enter to the waiting room...\n", getpid());
+    LOG_PRINTF("[PATIENT %d] Trying to enter to the waiting room...", getpid());
     enter_waiting_room(semget_waiting_room);
 
-    printf("[PATIENT %d] Entered to the waiting room!\n", getpid());
+    LOG_PRINTF("[PATIENT %d] Entered to the waiting room!", getpid());
     //sleep(2);
-    printf("[PATIENT %d] Registration number taken - waiting for my turn...\n", getpid());
+    LOG_PRINTF("[PATIENT %d] Registration number taken - waiting for my turn...", getpid());
     
     
     //FILLING PATIENT DATA
@@ -111,7 +119,7 @@ int main(){
     key_t key_sem_msg_pat_reg = ftok(FTOK_PATH, ID_SEM_MSG_REG);
     if(key_sem_msg_pat_reg == -1) report_error("[registration.c] key_sem_msg_pat_reg", 1);
 
-    int semget_msg_pat_reg = semget(key_sem_msg_pat_reg, 0, 0600);
+    int semget_msg_pat_reg = semget(key_sem_msg_pat_reg, 1, 0600);
     if(semget_msg_pat_reg == -1) report_error("[registration.c] semget_msg_pat_reg", 1);
 
     reserve_queue_place(semget_msg_pat_reg);
@@ -121,7 +129,7 @@ int main(){
     if(msgsnd_pat_reg == -1) report_error("[patient.c] msgsnd_pat_reg", 1);
 
 
-    printf("[PATIENT %d] Registered! Waiting for PC doctor...\n", getpid());
+    LOG_PRINTF("[PATIENT %d] Registered! Waiting for PC doctor...", getpid());
 
 
     //MESSAGE QUEUE PATIENT<->PC DOCTOR
@@ -310,6 +318,11 @@ int main(){
     if(semget_gen == -1) report_error("[director.c] semget_gen", 1);
 
     free_slot(semget_gen);
+    
+    if(guardian_pid > 0) {
+        waitpid(guardian_pid, NULL, 0);
+        LOG_PRINTF("[GUARDIAN] Child process finished.");
+    }
 
     return 0;
 }

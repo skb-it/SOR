@@ -6,7 +6,7 @@ volatile int is_ER_open = 1;
 
 
 void evacuation(){
-    printf("[DIRECTOR] Evacuation of the emergency room!\n");
+    LOG_PRINTF("[DIRECTOR] Evacuation of the emergency room!");
     is_ER_open = 0;
 }
 
@@ -30,6 +30,10 @@ int main(){
     for(int i = 0;i<10;i++){
         pids[i] = 0;
     }
+
+    //VARIABLES FOR STATS (DECLARE AT BEGINNING SO AVAILABLE AT END)
+    int shm_stats;
+    int semget_stats;
 
     //CTRL+C = EVACUATION OF ER
     signal(SIGINT, evacuation);
@@ -168,9 +172,52 @@ int main(){
     int semget_gen = semget(key_sem_gen, 1, 0600 | IPC_CREAT);
     if(semget_gen == -1) report_error("[director.c] semget_gen", 1);
 
-    
+    sem.val = 20000;
     int semctl_gen = semctl(semget_gen, 0, SETVAL, sem);
     if(semctl_gen == -1) report_error("[director.c] semctl_gen",1);
+
+
+    //SEMAPHORE LOG FILE
+    key_t key_sem_log = ftok(FTOK_PATH, ID_SEM_LOG_FILE);
+    if(key_sem_log == -1) report_error("[director.c] key_sem_log", 1);
+
+    int semget_log = semget(key_sem_log, 1, 0600 | IPC_CREAT);
+    if(semget_log == -1) report_error("[director.c] semget_log", 1);
+
+    sem.val = 1;
+    int semctl_log = semctl(semget_log, 0, SETVAL, sem);
+    if(semctl_log == -1) report_error("[director.c] semctl_log", 1);
+
+
+    //SHARED MEMORY FOR STATS
+    key_t key_shm_stats = ftok(FTOK_PATH, ID_SHM_STATS);
+    if(key_shm_stats == -1) report_error("[director.c] key_shm_stats", 1);
+
+    shm_stats = shmget(key_shm_stats, sizeof(struct PatientStats), 0600 | IPC_CREAT);
+    if(shm_stats == -1) report_error("[director.c] shm_stats", 1);
+
+    struct PatientStats *stats = shmat(shm_stats, NULL, 0);
+    if(stats == (void *)-1) report_error("[director.c] shmat stats", 1);
+    
+    memset(stats, 0, sizeof(struct PatientStats));
+    shmdt(stats);
+
+    //SEMAPHORE FOR STATS
+    key_t key_sem_stats = ftok(FTOK_PATH, ID_SEM_STATS);
+    if(key_sem_stats == -1) report_error("[director.c] key_sem_stats", 1);
+
+    semget_stats = semget(key_sem_stats, 1, 0600 | IPC_CREAT);
+    if(semget_stats == -1) report_error("[director.c] semget_stats", 1);
+
+    sem.val = 1;
+    int semctl_stats = semctl(semget_stats, 0, SETVAL, sem);
+    if(semctl_stats == -1) report_error("[director.c] semctl_stats", 1);
+
+
+    //CREATE LOG FILE
+    int log_fd = creat(LOG_FILE, 0666);
+    if(log_fd == -1) report_error("[director.c] creat log file", 1);
+    close(log_fd);
 
 
     //MESSAGE QUEUE PATIENT->REGISTRATION
@@ -344,7 +391,7 @@ int main(){
 
         int patients_in_queue = waiting_room_stat.msg_qnum;
         if(patients_in_queue >= N/2 && pids[1] == 0){
-            printf("|DIRECTOR| Queue is too long - opening second registration...\n");
+            LOG_PRINTF("|DIRECTOR| Queue is too long - opening second registration...");
             pids[1] = fork();
             if(pids[1] == 0){
                 execl("./registration", "registration", NULL);
@@ -352,7 +399,7 @@ int main(){
             }
         }
         else if(patients_in_queue<(N/3) && pids[1] > 0){
-            printf("|DIRECTOR| Queue is too short - closing second registration...\n");
+            LOG_PRINTF("|DIRECTOR| Queue is too short - closing second registration...");
             kill(pids[1], SIGUSR2);
             waitpid(pids[1], NULL, 0);
             pids[1] = 0;
@@ -364,7 +411,7 @@ int main(){
             int sdoc = (rand() % 6)+3;
 
             if(pids[sdoc] > 0){
-                printf("|DIRECTOR| Sending specialized doctor %d to ward!\n", pids[sdoc]);
+                LOG_PRINTF("|DIRECTOR| Sending specialized doctor %d to ward!", pids[sdoc]);
                 kill(pids[sdoc], SIGUSR1);
             }
         }
@@ -456,6 +503,43 @@ int main(){
     //DELETING MESSAGE QUEUE PATIENT<->PEDIATRICIAN
     int msgctl_del_pat_pediatr = msgctl(msg_pat_pediatr, IPC_RMID, NULL);
     if(msgctl_del_pat_pediatr == -1) report_error("[director.c] msgctl_del_pat_pediatr", 1);
+
+    //DELETING SEMAPHORE GENERATOR
+    int semctl_del_gen = semctl(semget_gen, 0, IPC_RMID, NULL);
+    if(semctl_del_gen == -1) report_error("[director.c] semctl_del_gen", 1);
+
+    //DELETING SEMAPHORE MESSAGE QUEUE PATIENT<->PC DOCTOR
+    int semctl_del_msg_pat_doc = semctl(semget_msg_pat_doc, 0, IPC_RMID, NULL);
+    if(semctl_del_msg_pat_doc == -1) report_error("[director.c] semctl_del_msg_pat_doc", 1);
+
+    //PRINT FINAL REPORT (BEFORE DELETING LOG SEMAPHORE!)
+    struct PatientStats *final_stats = shmat(shm_stats, NULL, 0);
+    if(final_stats != (void *)-1) {
+        LOG_PRINTF("\n========== FINAL REPORT ==========");
+        LOG_PRINTF("Total patients generated: %d", final_stats->total_patients);
+        LOG_PRINTF("Patients treated by PC Doctor: %d", final_stats->pc_doctor_count);
+        LOG_PRINTF("Patients sent to Cardiologist: %d", final_stats->cardiologist_count);
+        LOG_PRINTF("Patients sent to Neurologist: %d", final_stats->neurologist_count);
+        LOG_PRINTF("Patients sent to Eye Doctor: %d", final_stats->eye_doctor_count);
+        LOG_PRINTF("Patients sent to Laryngologist: %d", final_stats->laryngologist_count);
+        LOG_PRINTF("Patients sent to Surgeon: %d", final_stats->surgeon_count);
+        LOG_PRINTF("Patients sent to Pediatrician: %d", final_stats->pediatrician_count);
+        LOG_PRINTF("Patients sent home: %d", final_stats->sent_home);
+        LOG_PRINTF("==================================\n");
+        shmdt(final_stats);
+    }
+
+    //DELETING SEMAPHORE LOG FILE (AFTER FINAL REPORT!)
+    int semctl_del_log = semctl(semget_log, 0, IPC_RMID, NULL);
+    if(semctl_del_log == -1) report_error("[director.c] semctl_del_log", 1);
+
+    //DELETING SHARED MEMORY FOR STATS
+    int shmctl_del_stats = shmctl(shm_stats, IPC_RMID, NULL);
+    if(shmctl_del_stats == -1) report_error("[director.c] shmctl_del_stats", 1);
+
+    //DELETING SEMAPHORE FOR STATS
+    int semctl_del_stats = semctl(semget_stats, 0, IPC_RMID, NULL);
+    if(semctl_del_stats == -1) report_error("[director.c] semctl_del_stats", 1);
     
     printf("[DIRECTOR] ER evacuated!\n");
 

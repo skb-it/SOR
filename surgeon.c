@@ -8,12 +8,12 @@ void handle_signal(int sig) {
 }
 
 void visit_ward() {
-    printf("|SURGEON %d| Received signal from DIRECTOR. Going to ward...\n", getpid());
+    LOG_PRINTF("|SURGEON %d| Received signal from DIRECTOR. Going to ward...", getpid());
     
     //int pause = (rand() % 5) + 3;
     //sleep(pause);
     
-    printf("|SURGEON %d| Returned from ward to ER.\n", getpid());
+    LOG_PRINTF("|SURGEON %d| Returned from ward to ER.", getpid());
     
     go_to_ward = 0;
 }
@@ -48,7 +48,7 @@ int main(){
             visit_ward();
         }
 
-        printf("|SURGEON %d| Waiting for a patient...\n", getpid());
+        LOG_PRINTF("|SURGEON %d| Waiting for a patient...", getpid());
 
         int msgrcv_pat_surgeon = msgrcv(msg_pat_surgeon, &filled_card, sizeof(struct PatientCard) - sizeof(long), -3, 0);
 
@@ -64,7 +64,7 @@ int main(){
             }
         }
 
-        printf("|SURGEON %d| Patient %d came! Starting examination...\n", getpid(), filled_card.patient_id);
+        LOG_PRINTF("|SURGEON %d| Patient %d came! Starting examination...", getpid(), filled_card.patient_id);
 
         int random = rand() % 1000;
 
@@ -97,9 +97,10 @@ int main(){
             msg_sent = 1;
         }
 
-        printf("|SURGEON %d| Patient %d examinated!\n", getpid(), filled_card.patient_id);
+        LOG_PRINTF("|SURGEON %d| Patient %d examinated!", getpid(), filled_card.patient_id);
 
         free_slot(semget_msg_pat_surgeon);
+        increment_doctor_count(DOC_SURGEON);
 
         if(go_to_ward) {
             visit_ward();

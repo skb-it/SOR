@@ -5,7 +5,7 @@
 void report_error(const char* msg, int critical){
     perror(msg);
 
-    FILE *log_file = fopen("log_sor.txt", "a");
+    FILE *log_file = fopen("error_sor.txt", "a");
     if (log_file != NULL) {
         time_t now = time(NULL);
         char *time_str = ctime(&now);

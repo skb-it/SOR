@@ -30,7 +30,7 @@ int main(){
 
     signal(SIGUSR2, handle_close);
 
-    printf("|REGISTRATION %d| Opening...\n", getpid());
+    LOG_PRINTF("|REGISTRATION %d| Opening...", getpid());
     
     //MESSAGE QUEUE PATIENT->REGISTRATION
     key_t key_msg_pat_reg = ftok(FTOK_PATH, ID_MSG_PAT_REG);
@@ -56,7 +56,7 @@ int main(){
     key_t key_sem_msg_pat_reg = ftok(FTOK_PATH, ID_SEM_MSG_REG);
     if(key_sem_msg_pat_reg == -1) report_error("[registration.c] key_sem_msg_pat_reg", 1);
 
-    int semget_msg_pat_reg = semget(key_sem_msg_pat_reg, 0, 0600);
+    int semget_msg_pat_reg = semget(key_sem_msg_pat_reg, 1, 0600);
     if(semget_msg_pat_reg == -1) report_error("[registration.c] semget_msg_pat_reg", 1);
 
 
@@ -78,11 +78,11 @@ int main(){
     data_ready.sem_op = 1;
     data_ready.sem_flg = SEM_UNDO;
 
-    printf("|REGISTRATION %d| Opened!\n", getpid());
+    LOG_PRINTF("|REGISTRATION %d| Opened!", getpid());
 
     while(1){
         if (reg_close == 1){
-            printf("|REGISTRATION %d| Closing registration...\n", getpid());
+            LOG_PRINTF("|REGISTRATION %d| Closing registration...", getpid());
             break;
         }
 
@@ -92,7 +92,7 @@ int main(){
         if(msgrcv_pat_reg == -1) {
             if (errno == EINTR) {
                 if(reg_close == 1) {
-                    printf("|REGISTRATION %d| Closing registration...\n", getpid());
+                    LOG_PRINTF("|REGISTRATION %d| Closing registration...", getpid());
                     break;
                 }
                 continue;
@@ -100,10 +100,10 @@ int main(){
             report_error("[registration.c] msgrcv_pat_reg", 1);
         }
 
-        printf("|REGISTRATION %d| Patient %d came!\n", getpid(), buf.patient_id);
+        LOG_PRINTF("|REGISTRATION %d| Patient %d came!", getpid(), buf.patient_id);
         //sleep(2);
 
-        printf("|REGISTRATION %d| Waiting for free doctor slot...\n", getpid());
+        LOG_PRINTF("|REGISTRATION %d| Waiting for free doctor slot...", getpid());
 
         while(semop(semget_doc, &wait_empty, 1) == -1) {
              if(errno == EINTR) {
@@ -116,7 +116,8 @@ int main(){
         }
         
         if(reg_close) {
-             printf("|REGISTRATION %d| Closing registration (interrupted)...\n", getpid());
+             LOG_PRINTF("|REGISTRATION %d| Closing registration (interrupted)...", getpid());
+             free_queue_place(semget_msg_pat_reg);
              break;
         }
 
@@ -125,13 +126,20 @@ int main(){
         card->is_guardian = buf.is_guardian;
         card->is_vip = (buf.mtype == VIP) ? 1 : 0;
 
-        printf("|REGISTRATION %d| Patient %d forwarded to primary care doctor!", getpid(), card->patient_id);
+        LOG_PRINTF("|REGISTRATION %d| Patient %d forwarded to primary care doctor!", getpid(), card->patient_id);
 
+        // Signal that data is ready for PC doctor
         while(semop(semget_doc, &data_ready, 1) == -1) {
-             if(errno != EINTR) report_error("[registration.c] semop_data_ready", 1);
+             if(errno == EINTR) {
+                 if(reg_close == 1) break;
+                 continue;
+             }
+             report_error("[registration.c] semop_data_ready", 1);
+             break;
         }
 
         if(reg_close == 1){
+            free_queue_place(semget_msg_pat_reg);
             break;
         }
 
