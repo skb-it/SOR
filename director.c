@@ -161,6 +161,18 @@ int main(){
     if(semctl_msg_pat_surgeon == -1) report_error("[director.c] semctl_msg_pat_surgeon",1);
 
 
+    //SEMAPHORE GENERATOR
+    key_t key_sem_gen = ftok(FTOK_PATH, ID_SEM_GEN);
+    if(key_sem_gen == -1) report_error("[director.c] key_sem_gen", 1);
+
+    int semget_gen = semget(key_sem_gen, 1, 0600 | IPC_CREAT);
+    if(semget_gen == -1) report_error("[director.c] semget_gen", 1);
+
+    
+    int semctl_gen = semctl(semget_gen, 0, SETVAL, sem);
+    if(semctl_gen == -1) report_error("[director.c] semctl_gen",1);
+
+
     //MESSAGE QUEUE PATIENT->REGISTRATION
     key_t key_msg_pat_reg = ftok(FTOK_PATH, ID_MSG_PAT_REG);
     if(key_msg_pat_reg == -1) report_error("[director.c] key_msg_pat_reg", 1);
@@ -248,6 +260,9 @@ int main(){
     else if(pids[2] == 0){
         execl("./generator", "generator", NULL);
         report_error("[director.c] execl() -> generator",1);
+
+        
+
     }
 
 

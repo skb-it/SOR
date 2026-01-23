@@ -39,6 +39,7 @@
 #define ID_SEM_MSG_PEDIATR  'h'
 #define ID_SEM_MSG_SURGEON  'i'
 #define ID_SEM_MSG_REG      'j'
+#define ID_SEM_GEN          'w'
 #define ID_SHM_PAT_REG      'k'
 #define ID_SHM_REG_DOC      'l'
 #define ID_MSG_PAT_DOC      'm' //consider something else

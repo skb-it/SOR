@@ -301,10 +301,15 @@ int main(){
 
         return 0;
     }
-    else{
-        printf("|PATIENT %d| Examined by specialist doctor!\n", getpid());
 
-        return 0;
-    }
+    //SEMAPHORE GENERATOR
+    key_t key_sem_gen = ftok(FTOK_PATH, ID_SEM_GEN);
+    if(key_sem_gen == -1) report_error("[director.c] key_sem_gen", 1);
 
+    int semget_gen = semget(key_sem_gen, 1, 0600 | IPC_CREAT);
+    if(semget_gen == -1) report_error("[director.c] semget_gen", 1);
+
+    free_slot(semget_gen);
+
+    return 0;
 }
