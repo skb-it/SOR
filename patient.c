@@ -121,9 +121,6 @@ int main(){
     if(msgsnd_pat_reg == -1) report_error("[patient.c] msgsnd_pat_reg", 1);
 
 
-    //LEAVING WAITING ROOM
-    leave_waiting_room(semget_waiting_room);
-
     printf("[PATIENT %d] Registered! Waiting for PC doctor...\n", getpid());
 
 
@@ -148,7 +145,7 @@ int main(){
     int msgrcv_pat_doc = msgrcv(msg_doc_pat, &filled_card, sizeof(struct PatientCard) - sizeof(long), getpid(), 0);
     if (msgrcv_pat_doc == -1) report_error("[patient.c] msgrcv_doc_pat", 1);
 
-
+    leave_waiting_room(semget_waiting_room);
 
     //MESSAGE QUEUE PATIENT->CARDIOLOGIST
     key_t key_msg_pat_cardio = ftok(FTOK_PATH, ID_MSG_PAT_CARDIO);

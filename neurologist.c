@@ -76,6 +76,8 @@ int main(){
             filled_card.sdoc_dec = SENT_HOME;
         }
 
+        filled_card.mtype = filled_card.patient_id;
+
         int msg_sent = 0;
         while (msg_sent != 1) {
             int msgsnd_pat_neuro = msgsnd(msg_pat_neuro, &filled_card, sizeof(filled_card) - sizeof(long), 0);

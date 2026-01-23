@@ -106,9 +106,15 @@ int main(){
         printf("|REGISTRATION %d| Waiting for free doctor slot...\n", getpid());
 
         while(semop(semget_doc, &wait_empty, 1) == -1) {
-             if(errno != EINTR) report_error("[registration.c] semop_wait_empty", 1);
+             if(errno == EINTR) {
+                if(reg_close == 1){
+                    break;
+                }
+                continue;
+             }
+             report_error("[registration.c] semop_wait_empty", 1);
         }
-
+        
         if(reg_close) {
              printf("|REGISTRATION %d| Closing registration (interrupted)...\n", getpid());
              break;

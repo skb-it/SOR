@@ -74,7 +74,8 @@ int main(){
         else{
             filled_card.sdoc_dec = SENT_HOME;
         }
-
+        
+        filled_card.mtype = filled_card.patient_id;
 
         int msg_sent = 0;
         while (msg_sent != 1) {
