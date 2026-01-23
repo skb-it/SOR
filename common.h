@@ -57,7 +57,7 @@
 #define ID_SHM_STATS        'z'
 #define ID_SHM_PAT_REG      'k'
 #define ID_SHM_REG_DOC      'l'
-#define ID_MSG_PAT_DOC      'm' //consider something else
+#define ID_MSG_PAT_DOC      'm'
 #define ID_MSG_PAT_REG      'n'
 #define ID_MSG_PAT_CARDIO   'o'
 #define ID_MSG_PAT_NEURO    'p'
@@ -72,7 +72,6 @@
 #define DOC_LARYNGOLOGIST 4
 #define DOC_SURGEON       5
 #define DOC_PEDIATRICIAN  6
-
 
 struct Data{
     int N;
@@ -256,12 +255,12 @@ static inline void increment_doctor_count(int doctor_type){
     stats_acquire_lock(sem_stats);
     
     switch(doctor_type){
-        case DOC_CARDIOLOGIST: stats->cardiologist_count++; break;
-        case DOC_NEUROLOGIST: stats->neurologist_count++; break;
-        case DOC_EYE_DOC: stats->eye_doctor_count++; break;
-        case DOC_LARYNGOLOGIST: stats->laryngologist_count++; break;
-        case DOC_SURGEON: stats->surgeon_count++; break;
-        case DOC_PEDIATRICIAN: stats->pediatrician_count++; break;
+        case DOC_CARDIOLOGIST: stats->cardiologist_count++; LOG_PRINTF("[STATS] Cardiologist count now: %d", stats->cardiologist_count); break;
+        case DOC_NEUROLOGIST: stats->neurologist_count++; LOG_PRINTF("[STATS] Neurologist count now: %d", stats->neurologist_count); break;
+        case DOC_EYE_DOC: stats->eye_doctor_count++; LOG_PRINTF("[STATS] Eye doctor count now: %d", stats->eye_doctor_count); break;
+        case DOC_LARYNGOLOGIST: stats->laryngologist_count++; LOG_PRINTF("[STATS] Laryngologist count now: %d", stats->laryngologist_count); break;
+        case DOC_SURGEON: stats->surgeon_count++; LOG_PRINTF("[STATS] Surgeon count now: %d", stats->surgeon_count); break;
+        case DOC_PEDIATRICIAN: stats->pediatrician_count++; LOG_PRINTF("[STATS] Pediatrician count now: %d", stats->pediatrician_count); break;
     }
     
     stats_release_lock(sem_stats);
@@ -312,6 +311,174 @@ static inline void increment_total_patients(){
     
     stats_acquire_lock(sem_stats);
     stats->total_patients++;
+    stats_release_lock(sem_stats);
+    
+detach:
+    shmdt(stats);
+}
+
+static inline void increment_sent_home_count(){
+    key_t key_stats = ftok(FTOK_PATH, ID_SHM_STATS);
+    if(key_stats == -1) return;
+    
+    int shm_stats = shmget(key_stats, sizeof(struct PatientStats), 0600);
+    if(shm_stats == -1) return;
+    
+    struct PatientStats *stats = shmat(shm_stats, NULL, 0);
+    if(stats == (void *)-1) return;
+    
+    key_t key_sem_stats = ftok(FTOK_PATH, ID_SEM_STATS);
+    if(key_sem_stats == -1) goto detach;
+    
+    int sem_stats = semget(key_sem_stats, 1, 0600);
+    if(sem_stats == -1) goto detach;
+    
+    stats_acquire_lock(sem_stats);
+    stats->sent_home++;
+    stats_release_lock(sem_stats);
+    
+detach:
+    shmdt(stats);
+}
+
+static inline void increment_cardiologist_count(){
+    key_t key_stats = ftok(FTOK_PATH, ID_SHM_STATS);
+    if(key_stats == -1) return;
+    
+    int shm_stats = shmget(key_stats, sizeof(struct PatientStats), 0600);
+    if(shm_stats == -1) return;
+    
+    struct PatientStats *stats = shmat(shm_stats, NULL, 0);
+    if(stats == (void *)-1) return;
+    
+    key_t key_sem_stats = ftok(FTOK_PATH, ID_SEM_STATS);
+    if(key_sem_stats == -1) goto detach;
+    
+    int sem_stats = semget(key_sem_stats, 1, 0600);
+    if(sem_stats == -1) goto detach;
+    
+    stats_acquire_lock(sem_stats);
+    stats->cardiologist_count++;
+    stats_release_lock(sem_stats);
+    
+detach:
+    shmdt(stats);
+}
+
+static inline void increment_neurologist_count(){
+    key_t key_stats = ftok(FTOK_PATH, ID_SHM_STATS);
+    if(key_stats == -1) return;
+    
+    int shm_stats = shmget(key_stats, sizeof(struct PatientStats), 0600);
+    if(shm_stats == -1) return;
+    
+    struct PatientStats *stats = shmat(shm_stats, NULL, 0);
+    if(stats == (void *)-1) return;
+    
+    key_t key_sem_stats = ftok(FTOK_PATH, ID_SEM_STATS);
+    if(key_sem_stats == -1) goto detach;
+    
+    int sem_stats = semget(key_sem_stats, 1, 0600);
+    if(sem_stats == -1) goto detach;
+    
+    stats_acquire_lock(sem_stats);
+    stats->neurologist_count++;
+    stats_release_lock(sem_stats);
+    
+detach:
+    shmdt(stats);
+}
+
+static inline void increment_eye_doctor_count(){
+    key_t key_stats = ftok(FTOK_PATH, ID_SHM_STATS);
+    if(key_stats == -1) return;
+    
+    int shm_stats = shmget(key_stats, sizeof(struct PatientStats), 0600);
+    if(shm_stats == -1) return;
+    
+    struct PatientStats *stats = shmat(shm_stats, NULL, 0);
+    if(stats == (void *)-1) return;
+    
+    key_t key_sem_stats = ftok(FTOK_PATH, ID_SEM_STATS);
+    if(key_sem_stats == -1) goto detach;
+    
+    int sem_stats = semget(key_sem_stats, 1, 0600);
+    if(sem_stats == -1) goto detach;
+    
+    stats_acquire_lock(sem_stats);
+    stats->eye_doctor_count++;
+    stats_release_lock(sem_stats);
+    
+detach:
+    shmdt(stats);
+}
+
+static inline void increment_laryngologist_count(){
+    key_t key_stats = ftok(FTOK_PATH, ID_SHM_STATS);
+    if(key_stats == -1) return;
+    
+    int shm_stats = shmget(key_stats, sizeof(struct PatientStats), 0600);
+    if(shm_stats == -1) return;
+    
+    struct PatientStats *stats = shmat(shm_stats, NULL, 0);
+    if(stats == (void *)-1) return;
+    
+    key_t key_sem_stats = ftok(FTOK_PATH, ID_SEM_STATS);
+    if(key_sem_stats == -1) goto detach;
+    
+    int sem_stats = semget(key_sem_stats, 1, 0600);
+    if(sem_stats == -1) goto detach;
+    
+    stats_acquire_lock(sem_stats);
+    stats->laryngologist_count++;
+    stats_release_lock(sem_stats);
+    
+detach:
+    shmdt(stats);
+}
+
+static inline void increment_surgeon_count(){
+    key_t key_stats = ftok(FTOK_PATH, ID_SHM_STATS);
+    if(key_stats == -1) return;
+    
+    int shm_stats = shmget(key_stats, sizeof(struct PatientStats), 0600);
+    if(shm_stats == -1) return;
+    
+    struct PatientStats *stats = shmat(shm_stats, NULL, 0);
+    if(stats == (void *)-1) return;
+    
+    key_t key_sem_stats = ftok(FTOK_PATH, ID_SEM_STATS);
+    if(key_sem_stats == -1) goto detach;
+    
+    int sem_stats = semget(key_sem_stats, 1, 0600);
+    if(sem_stats == -1) goto detach;
+    
+    stats_acquire_lock(sem_stats);
+    stats->surgeon_count++;
+    stats_release_lock(sem_stats);
+    
+detach:
+    shmdt(stats);
+}
+
+static inline void increment_pediatrician_count(){
+    key_t key_stats = ftok(FTOK_PATH, ID_SHM_STATS);
+    if(key_stats == -1) return;
+    
+    int shm_stats = shmget(key_stats, sizeof(struct PatientStats), 0600);
+    if(shm_stats == -1) return;
+    
+    struct PatientStats *stats = shmat(shm_stats, NULL, 0);
+    if(stats == (void *)-1) return;
+    
+    key_t key_sem_stats = ftok(FTOK_PATH, ID_SEM_STATS);
+    if(key_sem_stats == -1) goto detach;
+    
+    int sem_stats = semget(key_sem_stats, 1, 0600);
+    if(sem_stats == -1) goto detach;
+    
+    stats_acquire_lock(sem_stats);
+    stats->pediatrician_count++;
     stats_release_lock(sem_stats);
     
 detach:

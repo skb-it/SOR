@@ -125,6 +125,7 @@ int main(){
             filled_card.mtype = filled_card.patient_id;
             int msgsnd_doc_pat = msgsnd(msg_doc_pat, &filled_card, sizeof(struct PatientCard) - sizeof(long), 0);
             if(msgsnd_doc_pat == -1) report_error("[pc_doctor.c] msgsnd_doc_pat", 1);
+            increment_sent_home_count();
         }
         else{
             asses_doc(&local_card);

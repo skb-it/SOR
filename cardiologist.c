@@ -3,11 +3,11 @@
 
 volatile int go_to_ward = 0;
 
-void handle_signal(int sig) {
+void handle_signal(int sig){
     go_to_ward = 1;
 }
 
-void visit_ward() {
+void visit_ward(){
     LOG_PRINTF("|CARDIOLOGIST %d| Received signal from DIRECTOR. Going to ward...", getpid());
     
     //int pause = (rand() % 5) + 3;
@@ -41,7 +41,7 @@ int main(){
 
 
     while(1){
-        if(go_to_ward) {
+        if(go_to_ward){
             visit_ward();
         }
 
@@ -99,7 +99,7 @@ int main(){
         free_slot(semget_msg_pat_cardio);
         increment_doctor_count(DOC_CARDIOLOGIST);
 
-        if(go_to_ward) {
+        if(go_to_ward == 1) {
             visit_ward();
         }
     }

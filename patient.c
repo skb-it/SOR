@@ -207,6 +207,10 @@ int main(){
         filled_card.mtype = COMMON;
     }
 
+    if(filled_card.triage == SENT_HOME){
+        goto end_of_patient_process;
+    }
+
     if(filled_card.sdoc == DOC_CARDIOLOGIST){
         key_t key_sem_msg_pat_cardio = ftok(FTOK_PATH, ID_SEM_MSG_CARDIO);
         if(key_sem_msg_pat_cardio == -1) report_error("[director.c] key_sem_msg_pat_cardio", 1);
@@ -309,19 +313,25 @@ int main(){
 
         return 0;
     }
+    else {
+        goto end_of_patient_process;
+    }
 
-    //SEMAPHORE GENERATOR
-    key_t key_sem_gen = ftok(FTOK_PATH, ID_SEM_GEN);
-    if(key_sem_gen == -1) report_error("[director.c] key_sem_gen", 1);
+end_of_patient_process:
+    {
+        //SEMAPHORE GENERATOR
+        key_t key_sem_gen = ftok(FTOK_PATH, ID_SEM_GEN);
+        if(key_sem_gen == -1) report_error("[director.c] key_sem_gen", 1);
 
-    int semget_gen = semget(key_sem_gen, 1, 0600 | IPC_CREAT);
-    if(semget_gen == -1) report_error("[director.c] semget_gen", 1);
+        int semget_gen = semget(key_sem_gen, 1, 0600 | IPC_CREAT);
+        if(semget_gen == -1) report_error("[director.c] semget_gen", 1);
 
     free_slot(semget_gen);
     
     if(guardian_pid > 0) {
         waitpid(guardian_pid, NULL, 0);
         LOG_PRINTF("[GUARDIAN] Child process finished.");
+    }
     }
 
     return 0;
