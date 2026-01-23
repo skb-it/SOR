@@ -123,7 +123,7 @@ int main(){
         card->age = buf.age;
         card->patient_id = buf.patient_id;
         card->is_guardian = buf.is_guardian;
-        card->mtype = buf.mtype;
+        card->is_vip = (buf.mtype == VIP) ? 1 : 0;
 
         printf("|REGISTRATION %d| Patient %d forwarded to primary care doctor!", getpid(), card->patient_id);
 

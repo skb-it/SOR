@@ -22,7 +22,7 @@ void visit_ward() {
 int main(){
     signal(SIGUSR1, handle_signal);
 
-    srand(time(NULL));
+    srand(time(NULL) ^ getpid());
     
     struct PatientCard filled_card;
 
@@ -58,7 +58,7 @@ int main(){
                 continue;
             } 
             else {
-                report_error("[eyedoc.c] msgrcv_pat_cardio", 1);
+                report_error("[eyedoc.c] msgrcv_pat_eyedoc", 1);
             }
         }
 
@@ -89,7 +89,7 @@ int main(){
                     continue; 
                 } 
                 else {
-                    report_error("[eyedoc.c] msgsnd_pat_cardio", 1);
+                    report_error("[eyedoc.c] msgsnd_pat_eyedoc", 1);
                 }
             }
             msg_sent = 1;

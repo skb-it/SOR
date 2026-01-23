@@ -100,8 +100,12 @@ static void free_slot(int semget){
     sb.sem_op = 1;
     sb.sem_flg = SEM_UNDO;
 
-    int semop_free_slot_cardio = semop(semget, &sb, 1);
-    if(semop_free_slot_cardio == -1) report_error("[patient.c] semop_free_slot_cardio", 1);
+    while(semop(semget, &sb, 1) == -1) {
+        if(errno == EINTR) {
+            continue;
+        }
+        report_error("[common.h] semop_free_slot failed", 1);
+    }
 }
 
 #define SHM_SIZE_INT sizeof(int)

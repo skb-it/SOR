@@ -11,6 +11,9 @@ void evacuation(){
 }
 
 int main(){
+    setbuf(stdout, NULL);
+    srand(time(NULL));
+
     srand(time(NULL));
 
     printf("[DIRECTOR] Opening ER...\n");

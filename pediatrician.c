@@ -23,7 +23,7 @@ void visit_ward() {
 int main(){
     signal(SIGUSR1, handle_signal);
 
-    srand(time(NULL));
+    srand(time(NULL) ^ getpid());
     
     struct PatientCard filled_card;
 

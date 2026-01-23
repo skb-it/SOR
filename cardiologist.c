@@ -21,7 +21,7 @@ void visit_ward() {
 int main(){
     signal(SIGUSR1, handle_signal);
 
-    srand(time(NULL));
+    srand(time(NULL) ^ getpid());
     
     struct PatientCard filled_card;
 
@@ -74,7 +74,7 @@ int main(){
         else{
             filled_card.sdoc_dec = SENT_HOME;
         }
-        
+
         filled_card.mtype = filled_card.patient_id;
 
         int msg_sent = 0;

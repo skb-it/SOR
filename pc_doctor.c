@@ -9,7 +9,7 @@ void asses_doc(struct PatientCard *card){
         if(random< 16) card->sdoc=DOC_PEDIATRICIAN;
         else if(random<32) card->sdoc=DOC_EYE_DOC;
         else if(random<60) card->sdoc=DOC_LARYNGOLOGIST;
-        else if(random<80) card->sdoc=DOC_NEUROLOGIST;
+        else if(random<70) card->sdoc=DOC_NEUROLOGIST;
         else if(random<80) card->sdoc=DOC_CARDIOLOGIST;
         else card->sdoc=DOC_SURGEON;
     }
@@ -46,7 +46,7 @@ void triage(struct PatientCard *card){
 
 
 int main(){
-    srand(time(NULL));
+    srand(time(NULL) ^ getpid());
 
 
     //MESSAGE QUEUE PATIENT->REGISTRATION
