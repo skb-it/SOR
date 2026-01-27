@@ -6,14 +6,14 @@
 
 
 volatile sig_atomic_t gen_running = 1;
-volatile sig_atomic_t reaper_running = 1;
+volatile sig_atomic_t killer_running = 1;
 
 int signal_fd = -1;
 
 void handle_gen_signal(int sig){
     (void)sig;
     gen_running = 0;
-    reaper_running = 0;
+    killer_running = 0;
 }
 
 void is_there_place(int semget_id){
@@ -31,18 +31,18 @@ void is_there_place(int semget_id){
     }
 }
 
-void* zombie_reaper(void* arg) {
+void* zombie_killer(void* arg) {
     (void)arg;
     
     struct signalfd_siginfo fdsi;
     
-    LOG_PRINTF("[REAPER %d] Zombie reaper thread started.", getpid());
+    LOG_PRINTF("[REAPER %d] Zombie killer thread started.", getpid());
     
-    while(reaper_running) {
+    while(killer_running) {
         int s = read(signal_fd, &fdsi, sizeof(fdsi));
         
         if(s != sizeof(fdsi)) {
-            if(errno == EBADF || !reaper_running) break;
+            if(errno == EBADF || !killer_running) break;
             if(errno == EINTR || errno == EAGAIN) continue;
             break;
         }
@@ -56,7 +56,7 @@ void* zombie_reaper(void* arg) {
     pid_t pid;
     while((pid = waitpid(-1, NULL, WNOHANG)) > 0);
     
-    LOG_PRINTF("[REAPER %d] Zombie reaper thread finished.", getpid());
+    LOG_PRINTF("[REAPER %d] Zombie killer thread finished.", getpid());
     return NULL;
 }
 
@@ -82,9 +82,9 @@ int main(){
     sa.sa_flags = 0;
     sigaction(SIGTERM, &sa, NULL);
 
-    pthread_t reaper_thread;
-    if(pthread_create(&reaper_thread, NULL, zombie_reaper, NULL) != 0) {
-        report_error("[generator.c] pthread_create reaper", 1);
+    pthread_t killer_thread;
+    if(pthread_create(&killer_thread, NULL, zombie_killer, NULL) != 0) {
+        report_error("[generator.c] pthread_create killer", 1);
     }
 
     key_t key_sem_gen = ftok(FTOK_PATH, ID_SEM_GEN);
@@ -132,14 +132,14 @@ int main(){
     while((pid = wait(&status)) > 0 || (pid == -1 && errno == EINTR)) {
     }
 
-    reaper_running = 0;
+    killer_running = 0;
     
     if(signal_fd != -1) {
         close(signal_fd);
         signal_fd = -1;
     }
     
-    pthread_join(reaper_thread, NULL);
+    pthread_join(killer_thread, NULL);
 
     LOG_PRINTF("[GENERATOR %d] Shutting down.", getpid());
     return 0;
