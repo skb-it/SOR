@@ -1,31 +1,37 @@
 #include "common.h"
 #include "errors.h"
+#include <signal.h>
+#include <unistd.h>
 
+volatile sig_atomic_t terminate = 0;
+
+void handle_terminate(int sig) {
+    (void)sig;
+    terminate = 1;
+}
 
 void asses_doc(struct PatientCard *card){
     int random = rand() % 100;
 
-    if(card->age<18){
-        if(random< 16) card->sdoc=DOC_PEDIATRICIAN;
-        else if(random<32) card->sdoc=DOC_EYE_DOC;
-        else if(random<60) card->sdoc=DOC_LARYNGOLOGIST;
-        else if(random<70) card->sdoc=DOC_NEUROLOGIST;
-        else if(random<80) card->sdoc=DOC_CARDIOLOGIST;
-        else card->sdoc=DOC_SURGEON;
+    if(card->age < 18){
+        if(random < 16) card->sdoc = DOC_PEDIATRICIAN;
+        else if(random < 32) card->sdoc = DOC_EYE_DOC;
+        else if(random < 60) card->sdoc = DOC_LARYNGOLOGIST;
+        else if(random < 70) card->sdoc = DOC_NEUROLOGIST;
+        else if(random < 80) card->sdoc = DOC_CARDIOLOGIST;
+        else card->sdoc = DOC_SURGEON;
     }
     else {
-        if(random< 20) card->sdoc=DOC_CARDIOLOGIST;
-        else if(random<40) card->sdoc=DOC_EYE_DOC;
-        else if(random<60) card->sdoc=DOC_LARYNGOLOGIST;
-        else if(random<80) card->sdoc=DOC_NEUROLOGIST;
-        else card->sdoc=DOC_SURGEON;
-        }
+        if(random < 20) card->sdoc = DOC_CARDIOLOGIST;
+        else if(random < 40) card->sdoc = DOC_EYE_DOC;
+        else if(random < 60) card->sdoc = DOC_LARYNGOLOGIST;
+        else if(random < 80) card->sdoc = DOC_NEUROLOGIST;
+        else card->sdoc = DOC_SURGEON;
+    }
 }
-
 
 void triage(struct PatientCard *card){
     LOG_PRINTF("|DOCTOR %d| Examining Patient %d...", getpid(), card->patient_id);
-    //sleep(2);
 
     int random = rand() % 100;
     
@@ -36,25 +42,23 @@ void triage(struct PatientCard *card){
         card->triage = TRIAGE_YELLOW;
     }   
     else if (random < 95) {
-    card->triage = TRIAGE_GREEN;
+        card->triage = TRIAGE_GREEN;
     } 
     else {
-    card->triage = SENT_HOME;
+        card->triage = SENT_HOME;
     }
 }
 
-
-
 int main(){
+    struct sigaction sa;
+    sa.sa_handler = handle_terminate;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+    sigaction(SIGTERM, &sa, NULL);
+    
     srand(time(NULL) ^ getpid());
 
-
-    //MESSAGE QUEUE PATIENT->REGISTRATION
-    key_t key_msg_pat_reg = ftok(FTOK_PATH, ID_MSG_PAT_REG);
-    int msg_pat_reg = msgget(key_msg_pat_reg, 0600);
-    if(msg_pat_reg == -1) report_error("[pc_doctor.c] msgget", 1);
-
-    //SHARED MEMORY REGISTRATION->PC DOCTOR
+    // SHARED MEMORY REGISTRATION->PC DOCTOR
     key_t key_shm_reg_doc = ftok(FTOK_PATH, ID_SHM_REG_DOC);
     if(key_shm_reg_doc == -1) report_error("[pc_doctor.c] key_shm_reg_doc", 1);
 
@@ -64,88 +68,69 @@ int main(){
     struct PatientCard *card = shmat(shmget_reg_doc, NULL, 0);
     if(card == (void *)-1) report_error("[pc_doctor.c] shmat card", 1);
 
-
-    //MESSAGE QUEUE PC PATIENT<->PC DOCTOR
+    // MESSAGE QUEUE PC DOCTOR->PATIENT
     key_t key_msg_doc_pat = ftok(FTOK_PATH, ID_MSG_PAT_DOC);
     if(key_msg_doc_pat == -1) report_error("[pc_doctor.c] key_msg_doc_pat", 1);
-    int msg_doc_pat = msgget(key_msg_doc_pat, 0600 | IPC_CREAT);
+    
+    int msg_doc_pat = msgget(key_msg_doc_pat, 0600);
     if(msg_doc_pat == -1) report_error("[pc_doctor.c] msg_doc_pat", 1);
 
-
-    //SEMAPHORE MESSAGE QUEUE PATIENT<->PC DOCTOR
-    key_t key_sem_msg_pat_doc = ftok(FTOK_PATH, ID_SEM_MSG_PAT_DOC);
-    if(key_sem_msg_pat_doc == -1) report_error("[pc_doctor.c] key_sem_msg_pat_doc", 1);
-
-    int semget_msg_pat_doc = semget(key_sem_msg_pat_doc, 1, 0600);
-    if(semget_msg_pat_doc == -1) report_error("[pc_doctor.c] semget_msg_pat_doc", 1);
-
-
-    //SEMAPHORE DOCTOR
+    // SEMAPHORE DOCTOR
     key_t key_sem_doc = ftok(FTOK_PATH, ID_SEM_DOC);
     if(key_sem_doc == -1) report_error("[pc_doctor.c] key_sem_doc", 1);
 
     int semget_doc = semget(key_sem_doc, 2, 0600);
-    if(semget_doc == -1) report_error("[pc_doctor.c] key_sem_doc", 1);
+    if(semget_doc == -1) report_error("[pc_doctor.c] semget_doc", 1);
 
-    struct sembuf wait_for_data;
-    wait_for_data.sem_num = 1;
-    wait_for_data.sem_op = -1;
-    wait_for_data.sem_flg = SEM_UNDO;
+    LOG_PRINTF("|DOCTOR %d| Ready to receive patients.", getpid());
 
-    struct sembuf signal_slot_free;
-    signal_slot_free.sem_num = 0;
-    signal_slot_free.sem_op = 1;
-    signal_slot_free.sem_flg = SEM_UNDO;
-
-
-    while(1){
+    while(terminate != 1){
         LOG_PRINTF("|DOCTOR %d| Waiting for a patient card...", getpid());
 
-        int semop_wait = semop(semget_doc, &wait_for_data, 1);
-        if(semop_wait == -1) {
-            if(errno == EINTR) continue;
-            report_error("[pc_doctor.c] semop_wait", 1);
+        int wait_result = consumer_wait_data(semget_doc, &terminate);
+        if(wait_result != 0) {
+            break;
         }
 
         struct PatientCard local_card = *card;
 
         LOG_PRINTF("|DOCTOR %d| Received Patient %d card!", getpid(), local_card.patient_id);
 
-        // Signal that slot is now free
-        while(semop(semget_doc, &signal_slot_free, 1) == -1) {
-            if(errno == EINTR) continue;
-            report_error("[pc_doctor.c] semop_slot_free", 1);
-            break;
+        if(consumer_signal_slot(semget_doc) == -1) {
+            report_error("[pc_doctor.c] consumer_signal_slot", 0);
         }
 
         triage(&local_card);
-        //sleep(1);
+        
+        local_card.mtype = local_card.patient_id;
+        
         if(local_card.triage == SENT_HOME){
-            struct PatientCard filled_card = local_card;
-            filled_card.mtype = filled_card.patient_id;
-            int msgsnd_doc_pat = msgsnd(msg_doc_pat, &filled_card, sizeof(struct PatientCard) - sizeof(long), 0);
-            if(msgsnd_doc_pat == -1) report_error("[pc_doctor.c] msgsnd_doc_pat", 1);
+            if(msgsnd(msg_doc_pat, &local_card, sizeof(struct PatientCard) - sizeof(long), 0) == -1) {
+                if(errno != EINTR) {
+                    report_error("[pc_doctor.c] msgsnd_doc_pat (home)", 1);
+                }
+            }
             increment_sent_home_count();
+            LOG_PRINTF("|DOCTOR %d| Patient %d sent home.", getpid(), local_card.patient_id);
         }
         else{
             asses_doc(&local_card);
-            struct PatientCard filled_card = local_card;
-            filled_card.mtype = filled_card.patient_id;
-
-            int msgsnd_doc_pat = msgsnd(msg_doc_pat, &filled_card, sizeof(struct PatientCard) - sizeof(long), 0);
-            if(msgsnd_doc_pat == -1) report_error("[pc_doctor.c] msgsnd_doc_pat", 1);
+            
+            if(msgsnd(msg_doc_pat, &local_card, sizeof(struct PatientCard) - sizeof(long), 0) == -1) {
+                if(errno != EINTR) {
+                    report_error("[pc_doctor.c] msgsnd_doc_pat (specialist)", 1);
+                }
+            }
+            LOG_PRINTF("|DOCTOR %d| Patient %d sent to specialist %d.", getpid(), local_card.patient_id, local_card.sdoc);
         }
 
-        LOG_PRINTF("|DOCTOR %d| Patient %d examinated!", getpid(), local_card.patient_id);
-
-        free_slot(semget_msg_pat_doc);
         increment_pc_doctor_count();
     }
 
+    if(shmdt(card) == -1) {
+        report_error("[pc_doctor.c] shmdt_reg_doc", 0);
+    }
 
-    
-    int shmdt_reg_doc = shmdt(card);
-    if(shmdt_reg_doc == -1) report_error("[pc_doctor.c] shmdt_reg_doc", 1);
-
+    LOG_PRINTF("|DOCTOR %d| Shutting down.", getpid());
     return 0;
 }

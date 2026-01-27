@@ -1,338 +1,214 @@
 #include "common.h"
 #include "errors.h"
 
-void fill_pat_data(struct MsgBuffer *buf, int age, int is_guardian, int patient_id){
-
-    //GETING PATIENT PID
+void fill_pat_data(struct Msg *buf, int age, int is_guardian, pid_t patient_id){
     buf->patient_id = patient_id;
-
-    //GETTING PATIENT AGE
     buf->age = age;
+    buf->is_guardian = is_guardian;
     
-    //DRAWING - VIP(CHANCE OF 15%) OR COMMON(CHANCE OF 85%)
-    if ((rand() % 100) < 15) buf->mtype = VIP;
-    else                     buf->mtype = COMMON;
-
-    buf->is_guardian= is_guardian;
-}
-
-void enter_waiting_room(int semget){
-    struct sembuf sb;
-    sb.sem_num = 0;
-    sb.sem_op = -1;
-    sb.sem_flg = SEM_UNDO;
-
-    while(semop(semget, &sb, 1) == -1) {
-        if(errno == EINTR) continue;
-        report_error("[patient.c] semop_enter_waiting_room", 1);
-        break;
-    }
-}
-
-void leave_waiting_room(int semget){
-    struct sembuf sb;
-    sb.sem_num = 0;
-    sb.sem_op = 1;
-    sb.sem_flg = SEM_UNDO;
-
-    while(semop(semget, &sb, 1) == -1) {
-        if(errno == EINTR) continue;
-        report_error("[patient.c] semop_leave_waiting_room", 1);
-        break;
-    }
-}
-
-void reserve_queue_place(int semget){
-    struct sembuf sb;
-    sb.sem_num = 0;
-    sb.sem_op = -1;
-    sb.sem_flg = SEM_UNDO;
-
-    while(semop(semget, &sb, 1) == -1) {
-        if(errno == EINTR) continue;
-        report_error("[patient.c] semop_give_info", 1);
-        break;
-    }
+    if ((rand() % 100) < 15) 
+        buf->mtype = VIP;
+    else                     
+        buf->mtype = COMMON;
 }
 
 int main(){
-
-    int has_guardian = 0;
-    //GENERATING PATIENT AGE AND CHECKING IF GUARDIAN IS REQUIRED
-    srand(time(NULL)^getpid());
-    int age = rand() % 117;
-
-    int patient_id = getpid();
-    pid_t guardian_pid = 0;
+    srand(time(NULL) ^ getpid());
     
+    int has_guardian = 0;
+    int age = rand() % 117;
+    pid_t patient_id = getpid();
 
     if(age < 18){
         has_guardian = 1;
-        pid_t pid = fork();
-        if(pid == -1) {
-            report_error("[patient.c] pid = fork()", 1);
-        }
-
-        //GUARDIAN PROCESS
-        if(pid > 0){
-            LOG_PRINTF("[GUARDIAN %d] Coming with my child.", getpid());
-            guardian_pid = pid;
-            //WAIT FOR CHILD AT THE END OF PROGRAM
-        }
-        else {
-            //GETTING PATIENT PID
-            patient_id = getpid();
-        }
+        LOG_PRINTF("|PATIENT %d| Child (age %d) arrived with guardian.", patient_id, age);
     }
-                //GUARDIAN+CHILD PROCESS
 
-    //SEMAPHORE WAITING ROOM
     key_t key_sem_waiting_room = ftok(FTOK_PATH, ID_SEM_WAITING_ROOM);
     if(key_sem_waiting_room == -1) report_error("[patient.c] key_sem_waiting_room", 1);
 
-    int semget_waiting_room = semget(key_sem_waiting_room, 1, 0600);
-    if(semget_waiting_room == -1) report_error("[patient.c] semget_waiting_room", 1);
+    int sem_waiting_room = semget(key_sem_waiting_room, 1, 0600);
+    if(sem_waiting_room == -1) report_error("[patient.c] sem_waiting_room", 1);
 
-    LOG_PRINTF("[PATIENT %d] Trying to enter to the waiting room...", getpid());
-    enter_waiting_room(semget_waiting_room);
-
-    LOG_PRINTF("[PATIENT %d] Entered to the waiting room!", getpid());
-    //sleep(2);
-    LOG_PRINTF("[PATIENT %d] Registration number taken - waiting for my turn...", getpid());
+    LOG_PRINTF("|PATIENT %d| Trying to enter waiting room%s...", patient_id, 
+               has_guardian ? " (with guardian)" : "");
     
-    
-    //FILLING PATIENT DATA
-    struct MsgBuffer buf;
-    fill_pat_data(&buf, age, has_guardian, patient_id);
+    if(has_guardian) {
+        if(sem_acquire(sem_waiting_room) == -1) {
+            report_error("[patient.c] enter waiting room (1)", 1);
+        }
+        if(sem_acquire(sem_waiting_room) == -1) {
+            sem_release(sem_waiting_room);
+            report_error("[patient.c] enter waiting room (2)", 1);
+        }
+    } else {
+        if(sem_acquire(sem_waiting_room) == -1) {
+            report_error("[patient.c] enter waiting room", 1);
+        }
+    }
 
-  
+    LOG_PRINTF("|PATIENT %d| Entered waiting room%s, taking registration number.", 
+               patient_id, has_guardian ? " (with guardian)" : "");
 
-    //MESSAGE QUEUE PATIENT<->REGISTRATION
     key_t key_msg_pat_reg = ftok(FTOK_PATH, ID_MSG_PAT_REG);
     if(key_msg_pat_reg == -1) report_error("[patient.c] key_msg_pat_reg", 1);
 
-
-    int msg_pat_reg = msgget(key_msg_pat_reg, 0600 | IPC_CREAT);
+    int msg_pat_reg = msgget(key_msg_pat_reg, 0600);
     if(msg_pat_reg == -1) report_error("[patient.c] msg_pat_reg", 1);
 
-    //SEMAPHORE MESSAGE QUEUE PATIENT->REGISTRATION
     key_t key_sem_msg_pat_reg = ftok(FTOK_PATH, ID_SEM_MSG_REG);
-    if(key_sem_msg_pat_reg == -1) report_error("[registration.c] key_sem_msg_pat_reg", 1);
+    if(key_sem_msg_pat_reg == -1) report_error("[patient.c] key_sem_msg_pat_reg", 1);
 
-    int semget_msg_pat_reg = semget(key_sem_msg_pat_reg, 1, 0600);
-    if(semget_msg_pat_reg == -1) report_error("[registration.c] semget_msg_pat_reg", 1);
+    int sem_msg_pat_reg = semget(key_sem_msg_pat_reg, 1, 0600);
+    if(sem_msg_pat_reg == -1) report_error("[patient.c] sem_msg_pat_reg", 1);
 
-    reserve_queue_place(semget_msg_pat_reg);
+    //RESERVE QUEUE SLOT TO REGISTRATION
+    if(sem_acquire(sem_msg_pat_reg) == -1) {
+        report_error("[patient.c] acquire registration queue", 1);
+    }
 
-    //SHARING PATIENT DATA FOR REGISTRATION
-    int msgsnd_pat_reg = msgsnd(msg_pat_reg, &buf, sizeof(buf) - sizeof(long), 0);
-    if(msgsnd_pat_reg == -1) report_error("[patient.c] msgsnd_pat_reg", 1);
+    struct Msg buf;
+    fill_pat_data(&buf, age, has_guardian, patient_id);
 
+    if(msgsnd(msg_pat_reg, &buf, sizeof(buf) - sizeof(long), 0) == -1) {
+        report_error("[patient.c] msgsnd to registration", 1);
+    }
+    
+    //LEAVING WAITING ROOM
+    sem_release(sem_waiting_room);
+    if(has_guardian) {
+        sem_release(sem_waiting_room);
+    }
 
-    LOG_PRINTF("[PATIENT %d] Registered! Waiting for PC doctor...", getpid());
+    LOG_PRINTF("|PATIENT %d| Registered%s, waiting for PC doctor...", 
+               patient_id, has_guardian ? " (with guardian)" : "");
 
-
-    //MESSAGE QUEUE PATIENT<->PC DOCTOR
     key_t key_msg_doc_pat = ftok(FTOK_PATH, ID_MSG_PAT_DOC);
     if(key_msg_doc_pat == -1) report_error("[patient.c] key_msg_doc_pat", 1);
 
-    int msg_doc_pat = msgget(key_msg_doc_pat, 0600 | IPC_CREAT);
+    int msg_doc_pat = msgget(key_msg_doc_pat, 0600);
     if(msg_doc_pat == -1) report_error("[patient.c] msg_doc_pat", 1);
 
-    //SEMAPHORE MESSAGE QUEUE PATIENT<->PC DOCTOR
-    key_t key_sem_msg_pat_doc = ftok(FTOK_PATH, ID_SEM_MSG_PAT_DOC);
-    if(key_sem_msg_pat_doc == -1) report_error("[patient.c] key_sem_msg_pat_doc", 1);
-
-    int semget_msg_pat_doc = semget(key_sem_msg_pat_doc, 1, 0600);
-    if(semget_msg_pat_doc == -1) report_error("[patient.c] semget_msg_pat_doc", 1);
-
-    reserve_queue_place(semget_msg_pat_doc);
-
     struct PatientCard filled_card;
-
-    int msgrcv_pat_doc = msgrcv(msg_doc_pat, &filled_card, sizeof(struct PatientCard) - sizeof(long), getpid(), 0);
-    if (msgrcv_pat_doc == -1) report_error("[patient.c] msgrcv_doc_pat", 1);
-
-    leave_waiting_room(semget_waiting_room);
-
-    //MESSAGE QUEUE PATIENT->CARDIOLOGIST
-    key_t key_msg_pat_cardio = ftok(FTOK_PATH, ID_MSG_PAT_CARDIO);
-    if(key_msg_pat_cardio == -1) report_error("[patient.c] key_msg_pat_cardio", 1);
-
-    int msg_pat_cardio = msgget(key_msg_pat_cardio, 0600 | IPC_CREAT);
-    if(msg_pat_cardio == -1) report_error("[patient.c] msg_pat_cardio", 1);
-
-
-    //MESSAGE QUEUE PATIENT->NEUROLOGIST
-    key_t key_msg_pat_neuro = ftok(FTOK_PATH, ID_MSG_PAT_NEURO);
-    if(key_msg_pat_neuro == -1) report_error("[patient.c] key_msg_pat_neuro", 1);
-
-    int msg_pat_neuro = msgget(key_msg_pat_neuro, 0600 | IPC_CREAT);
-    if(msg_pat_neuro == -1) report_error("[patient.c] msg_pat_neuro", 1);
-
-
-    //MESSAGE QUEUE PATIENT->EYE DOC
-    key_t key_msg_pat_eye = ftok(FTOK_PATH, ID_MSG_PAT_EYE);
-    if(key_msg_pat_eye == -1) report_error("[patient.c] key_msg_pat_eye", 1);
-
-    int msg_pat_eye = msgget(key_msg_pat_eye, 0600 | IPC_CREAT);
-    if(msg_pat_eye == -1) report_error("[patient.c] msg_pat_eye", 1);
-
-
-    //MESSAGE QUEUE PATIENT->LARYNGOLOGIST
-    key_t key_msg_pat_laryng = ftok(FTOK_PATH, ID_MSG_PAT_LARYNG);
-    if(key_msg_pat_laryng == -1) report_error("[patient.c] key_msg_pat_laryng", 1);
-
-    int msg_pat_laryng = msgget(key_msg_pat_laryng, 0600 | IPC_CREAT);
-    if(msg_pat_laryng == -1) report_error("[patient.c] msg_pat_laryng", 1);
-
-    //MESSAGE QUEUE PATIENT->SURGEON
-    key_t key_msg_pat_surgeon = ftok(FTOK_PATH, ID_MSG_PAT_SURGEON);
-    if(key_msg_pat_surgeon == -1) report_error("[patient.c] key_msg_pat_surgeon", 1);
-
-    int msg_pat_surgeon = msgget(key_msg_pat_surgeon, 0600 | IPC_CREAT);
-    if(msg_pat_surgeon == -1) report_error("[patient.c] msg_pat_surgeon", 1);
-
-    //MESSAGE QUEUE PATIENT->PEDATRICIAN
-    key_t key_msg_pat_pediatr = ftok(FTOK_PATH, ID_MSG_PAT_PEDIATR);
-    if(key_msg_pat_pediatr == -1) report_error("[patient.c] key_msg_pat_pediatr", 1);
-
-    int msg_pat_pediatr = msgget(key_msg_pat_pediatr, 0600 | IPC_CREAT);
-    if(msg_pat_pediatr == -1) report_error("[patient.c] msg_pat_pediatr", 1);
-
-    if(filled_card.is_vip == 1){
-        filled_card.mtype = VIP;
+    while(msgrcv(msg_doc_pat, &filled_card, sizeof(struct PatientCard) - sizeof(long), patient_id, 0) == -1) {
+        if(errno == EINTR) continue;
+        report_error("[patient.c] msgrcv_doc_pat", 1);
     }
-    else{
-        filled_card.mtype = COMMON;
-    }
+
+    LOG_PRINTF("|PATIENT %d| Received diagnosis from PC doctor, triage=%d%s", 
+               patient_id, filled_card.triage, has_guardian ? " (with guardian)" : "");
 
     if(filled_card.triage == SENT_HOME){
-        goto end_of_patient_process;
-    }
+        LOG_PRINTF("|PATIENT %d| Sent home by PC doctor%s, leaving.", 
+                   patient_id, has_guardian ? " (with guardian)" : "");
 
-    if(filled_card.sdoc == DOC_CARDIOLOGIST){
-        key_t key_sem_msg_pat_cardio = ftok(FTOK_PATH, ID_SEM_MSG_CARDIO);
-        if(key_sem_msg_pat_cardio == -1) report_error("[director.c] key_sem_msg_pat_cardio", 1);
-
-        int semget_msg_pat_cardio = semget(key_sem_msg_pat_cardio, 1, 0600 | IPC_CREAT); //  16384:32=512, sizeof(struct PatientCard) = 32
-        if(semget_msg_pat_cardio == -1) report_error("[director.c] semget_msg_pat_cardio", 1);
-
-        reserve_queue_place(semget_msg_pat_cardio);
-
-        int msgsnd_pat_cardio = msgsnd(msg_pat_cardio, &filled_card, sizeof(struct PatientCard) - sizeof(long), 0);
-        if(msgsnd_pat_cardio == -1) report_error("[patient.c] msgsnd_pat_cardio", 1);
-
-        int msgrcv_pat_cardio = msgrcv(msg_pat_cardio, &filled_card, sizeof(struct PatientCard) - sizeof(long), getpid(), 0);
-        if (msgrcv_pat_cardio == -1) report_error("[patient.c] msgrcv_pat_cardio", 1);
-
-        return 0;
-    }
-    else if (filled_card.sdoc == DOC_EYE_DOC){
-        key_t key_sem_msg_pat_eyedoc = ftok(FTOK_PATH, ID_SEM_MSG_EYEDOC);
-        if(key_sem_msg_pat_eyedoc == -1) report_error("[director.c] key_sem_msg_pat_eyedoc", 1);
-
-        int semget_msg_pat_eyedoc = semget(key_sem_msg_pat_eyedoc, 1, 0600 | IPC_CREAT); //  16384:32=1024, sizeof(struct PatientCard) = 32
-        if(semget_msg_pat_eyedoc == -1) report_error("[director.c] semget_msg_pat_eyedoc", 1);
-
-        reserve_queue_place(semget_msg_pat_eyedoc);
-        
-        int msgsnd_pat_eye = msgsnd(msg_pat_eye, &filled_card, sizeof(filled_card) - sizeof(long), 0);
-        if(msgsnd_pat_eye == -1) report_error("[patient.c] msgsnd_pat_eye", 1);
-
-        int msgrcv_pat_eye = msgrcv(msg_pat_eye, &filled_card, sizeof(struct PatientCard) - sizeof(long), getpid(), 0);
-        if (msgrcv_pat_eye == -1) report_error("[patient.c] msgrcv_pat_eye", 1);
-
-        return 0;
-    }
-    else if (filled_card.sdoc == DOC_LARYNGOLOGIST){
-        key_t key_sem_msg_pat_laryng = ftok(FTOK_PATH, ID_SEM_MSG_LARYNG);
-        if(key_sem_msg_pat_laryng == -1) report_error("[director.c] key_sem_msg_pat_laryng", 1);
-
-        int semget_msg_pat_laryng = semget(key_sem_msg_pat_laryng, 1, 0600 | IPC_CREAT); //  16384:32=1024, sizeof(struct PatientCard) = 32
-        if(semget_msg_pat_laryng == -1) report_error("[director.c] semget_msg_pat_laryng", 1);
-
-        reserve_queue_place(semget_msg_pat_laryng);
-
-        int msgsnd_pat_laryng = msgsnd(msg_pat_laryng, &filled_card, sizeof(filled_card) - sizeof(long), 0);
-        if(msgsnd_pat_laryng == -1) report_error("[patient.c] msgsnd_pat_laryng", 1);
-
-        int msgrcv_pat_laryng = msgrcv(msg_pat_laryng, &filled_card, sizeof(struct PatientCard) - sizeof(long), getpid(), 0);
-        if (msgrcv_pat_laryng == -1) report_error("[patient.c] msgrcv_pat_laryng", 1);
-
-        return 0;
-    }
-    else if (filled_card.sdoc == DOC_NEUROLOGIST){
-        key_t key_sem_msg_pat_neuro = ftok(FTOK_PATH, ID_SEM_MSG_NEURO);
-        if(key_sem_msg_pat_neuro == -1) report_error("[director.c] key_sem_msg_pat_neuro", 1);
-
-        int semget_msg_pat_neuro = semget(key_sem_msg_pat_neuro, 1, 0600 | IPC_CREAT); //  16384:32=1024, sizeof(struct PatientCard) = 32
-        if(semget_msg_pat_neuro == -1) report_error("[director.c] semget_msg_pat_neuro", 1);
-
-        reserve_queue_place(semget_msg_pat_neuro);
-
-        int msgsnd_pat_neuro = msgsnd(msg_pat_neuro, &filled_card, sizeof(filled_card) - sizeof(long), 0);
-        if(msgsnd_pat_neuro == -1) report_error("[patient.c] msgsnd_pat_neuro", 1);
-
-        int msgrcv_pat_neuro = msgrcv(msg_pat_neuro, &filled_card, sizeof(struct PatientCard) - sizeof(long), getpid(), 0);
-        if (msgrcv_pat_neuro == -1) report_error("[patient.c] msgrcv_pat_neuro", 1);
-
-        return 0;
-    }
-    else if (filled_card.sdoc == DOC_PEDIATRICIAN){
-        key_t key_sem_msg_pat_pediatr = ftok(FTOK_PATH, ID_SEM_MSG_PEDIATR);
-        if(key_sem_msg_pat_pediatr == -1) report_error("[director.c] key_sem_msg_pat_pediatr", 1);
-
-        int semget_msg_pat_pediatr = semget(key_sem_msg_pat_pediatr, 1, 0600 | IPC_CREAT);
-        if(semget_msg_pat_pediatr == -1) report_error("[director.c] semget_msg_pat_pediatr", 1);
-
-        reserve_queue_place(semget_msg_pat_pediatr);
-
-        int msgsnd_pat_pediatr = msgsnd(msg_pat_pediatr, &filled_card, sizeof(filled_card) - sizeof(long), 0);
-        if(msgsnd_pat_pediatr == -1) report_error("[patient.c] msgsnd_pat_pediatr", 1);
-
-        int msgrcv_pat_pediatr = msgrcv(msg_pat_pediatr, &filled_card, sizeof(struct PatientCard) - sizeof(long), getpid(), 0);
-        if (msgrcv_pat_pediatr == -1) report_error("[patient.c] msgrcv_pat_pediatr", 1);
-
-        return 0;
-    }
-    else if (filled_card.sdoc == DOC_SURGEON){
-        key_t key_sem_msg_pat_surgeon = ftok(FTOK_PATH, ID_SEM_MSG_SURGEON);
-        if(key_sem_msg_pat_surgeon == -1) report_error("[director.c] key_sem_msg_pat_surgeon", 1);
-
-        int semget_msg_pat_surgeon = semget(key_sem_msg_pat_surgeon, 1, 0600 | IPC_CREAT);
-        if(semget_msg_pat_surgeon == -1) report_error("[director.c] semget_msg_pat_surgeon", 1);
-
-        reserve_queue_place(semget_msg_pat_surgeon);
-
-        int msgsnd_pat_surgeon = msgsnd(msg_pat_surgeon, &filled_card, sizeof(filled_card) - sizeof(long), 0);
-        if(msgsnd_pat_surgeon == -1) report_error("[patient.c] msgsnd_pat_surgeon", 1);
-
-        int msgrcv_pat_surgeon = msgrcv(msg_pat_surgeon, &filled_card, sizeof(struct PatientCard) - sizeof(long), getpid(), 0);
-        if (msgrcv_pat_surgeon == -1) report_error("[patient.c] msgrcv_pat_surgeon", 1);
-
-        return 0;
-    }
-    else {
-        goto end_of_patient_process;
-    }
-
-end_of_patient_process:
-    {
-        //SEMAPHORE GENERATOR
         key_t key_sem_gen = ftok(FTOK_PATH, ID_SEM_GEN);
-        if(key_sem_gen == -1) report_error("[director.c] key_sem_gen", 1);
+        if(key_sem_gen != -1) {
+            int sem_gen = semget(key_sem_gen, 1, 0600);
+            if(sem_gen != -1) {
+                sem_release(sem_gen);
+            }
+        }
 
-        int semget_gen = semget(key_sem_gen, 1, 0600 | IPC_CREAT);
-        if(semget_gen == -1) report_error("[director.c] semget_gen", 1);
+        LOG_PRINTF("|PATIENT %d| Leaving hospital%s.", 
+                   patient_id, has_guardian ? " (with guardian)" : "");
+        return 0;
+    }
 
-    free_slot(semget_gen);
+    int msg_specialist = -1;
+    int sem_specialist = -1;
+    const char *specialist_name = "";
     
-    if(guardian_pid > 0) {
-        waitpid(guardian_pid, NULL, 0);
-        LOG_PRINTF("[GUARDIAN] Child process finished.");
+    key_t key_msg, key_sem;
+    char sem_id_char;
+    
+    switch(filled_card.sdoc) {
+        case DOC_CARDIOLOGIST:
+            key_msg = ftok(FTOK_PATH, ID_MSG_PAT_CARDIO);
+            sem_id_char = ID_SEM_MSG_CARDIO;
+            specialist_name = "CARDIOLOGIST";
+            break;
+        case DOC_NEUROLOGIST:
+            key_msg = ftok(FTOK_PATH, ID_MSG_PAT_NEURO);
+            sem_id_char = ID_SEM_MSG_NEURO;
+            specialist_name = "NEUROLOGIST";
+            break;
+        case DOC_EYE_DOC:
+            key_msg = ftok(FTOK_PATH, ID_MSG_PAT_EYE);
+            sem_id_char = ID_SEM_MSG_EYEDOC;
+            specialist_name = "EYE DOCTOR";
+            break;
+        case DOC_LARYNGOLOGIST:
+            key_msg = ftok(FTOK_PATH, ID_MSG_PAT_LARYNG);
+            sem_id_char = ID_SEM_MSG_LARYNG;
+            specialist_name = "LARYNGOLOGIST";
+            break;
+        case DOC_SURGEON:
+            key_msg = ftok(FTOK_PATH, ID_MSG_PAT_SURGEON);
+            sem_id_char = ID_SEM_MSG_SURGEON;
+            specialist_name = "SURGEON";
+            break;
+        case DOC_PEDIATRICIAN:
+            key_msg = ftok(FTOK_PATH, ID_MSG_PAT_PEDIATR);
+            sem_id_char = ID_SEM_MSG_PEDIATR;
+            specialist_name = "PEDIATRICIAN";
+            break;
+        default:
+            LOG_PRINTF("|PATIENT %d| Unknown specialist assigned, leaving.", patient_id);
+            key_t key_sem_gen = ftok(FTOK_PATH, ID_SEM_GEN);
+            if(key_sem_gen != -1) {
+                int sem_gen = semget(key_sem_gen, 1, 0600);
+                if(sem_gen != -1) {
+                    sem_release(sem_gen);
+                }
+            }
+            LOG_PRINTF("|PATIENT %d| Leaving hospital.", patient_id);
+            return 0;
     }
+    
+    if(key_msg == -1) report_error("[patient.c] ftok specialist msg", 1);
+    
+    msg_specialist = msgget(key_msg, 0600);
+    if(msg_specialist == -1) report_error("[patient.c] msgget specialist", 1);
+    
+    key_sem = ftok(FTOK_PATH, sem_id_char);
+    if(key_sem == -1) report_error("[patient.c] ftok specialist sem", 1);
+    
+    sem_specialist = semget(key_sem, 1, 0600);
+    if(sem_specialist == -1) report_error("[patient.c] semget specialist", 1);
+
+    LOG_PRINTF("|PATIENT %d| Going to %s%s...", patient_id, specialist_name,
+               has_guardian ? " (with guardian)" : "");
+
+    filled_card.mtype = filled_card.triage;
+    
+    if(sem_acquire(sem_specialist) == -1) {
+        report_error("[patient.c] acquire specialist queue", 1);
     }
 
+    int msgsnd_pat_specialist = msgsnd(msg_specialist, &filled_card, sizeof(struct PatientCard) - sizeof(long), 0);
+    if(msgsnd_pat_specialist == -1) {
+        report_error("[patient.c] msgsnd_pat_specialist", 1);
+    }
+
+    while(msgrcv(msg_specialist, &filled_card, sizeof(struct PatientCard) - sizeof(long), patient_id, 0) == -1) {
+        if(errno == EINTR) continue;
+        report_error("[patient.c] msgrcv_pat_specialist", 1);
+    }
+
+    LOG_PRINTF("|PATIENT %d| Treatment by %s completed, decision=%d%s", 
+               patient_id, specialist_name, filled_card.sdoc_dec,
+               has_guardian ? " (with guardian)" : "");
+
+    key_t key_sem_gen_end = ftok(FTOK_PATH, ID_SEM_GEN);
+    if(key_sem_gen_end != -1) {
+        int sem_gen = semget(key_sem_gen_end, 1, 0600);
+        if(sem_gen != -1) {
+            sem_release(sem_gen);
+        }
+    }
+
+    LOG_PRINTF("|PATIENT %d| Leaving hospital%s.", patient_id,
+               has_guardian ? " (with guardian)" : "");
     return 0;
 }

@@ -1,110 +1,104 @@
 #include "errors.h"
 #include "common.h"
 
-volatile int go_to_ward = 0;
+volatile sig_atomic_t go_to_ward = 0;
+volatile sig_atomic_t terminate = 0;
 
-void handle_signal(int sig) {
+void handle_signal(int sig){
+    (void)sig;
     go_to_ward = 1;
 }
 
-void visit_ward() {
-    LOG_PRINTF("|LARYNGOLOGIST %d| Received signal from DIRECTOR. Going to ward...", getpid());
-    
-    //int pause = (rand() % 5) + 3;
-    //sleep(pause);
-    
-    LOG_PRINTF("|LARYNGOLOGIST %d| Returned from ward to ER.", getpid());
-    
+void handle_terminate(int sig) {
+    (void)sig;
+    terminate = 1;
+}
+
+void visit_ward(){
+    LOG_PRINTF("|LARYNGOLOGIST %d| Going to ward...", getpid());
+    //int _time = rand() % 100;
+    //sleep(random_time) 
+    LOG_PRINTF("|LARYNGOLOGIST %d| Returned from ward.", getpid());
     go_to_ward = 0;
 }
 
-
 int main(){
-    signal(SIGUSR1, handle_signal);
+    struct sigaction sa_term, sa_ward;
+    
+    sa_term.sa_handler = handle_terminate;
+    sigemptyset(&sa_term.sa_mask);
+    sa_term.sa_flags = 0;
+    sigaction(SIGTERM, &sa_term, NULL);
+    
+    sa_ward.sa_handler = handle_signal;
+    sigemptyset(&sa_ward.sa_mask);
+    sa_ward.sa_flags = 0;
+    sigaction(SIGUSR1, &sa_ward, NULL);
 
     srand(time(NULL) ^ getpid());
     
-    struct PatientCard filled_card;
-
-    //MESSAGE QUEUE PATIENT<->LARYNGOLOGIST
+    // MESSAGE QUEUE PATIENT<->LARYNGOLOGIST
     key_t key_msg_pat_laryng = ftok(FTOK_PATH, ID_MSG_PAT_LARYNG);
-    if(key_msg_pat_laryng == -1) report_error("[laryngologist.c] error: key_msg_pat_laryng", 1);
+    if(key_msg_pat_laryng == -1) report_error("[laryngologist.c] key_msg_pat_laryng", 1);
 
-    int msg_pat_laryng = msgget(key_msg_pat_laryng, 0600 | IPC_CREAT);
-    if(msg_pat_laryng == -1) report_error("[laryngologist.c] error: msg_pat_laryng", 1);
+    int msgget_pat_laryng = msgget(key_msg_pat_laryng, 0600);
+    if(msgget_pat_laryng == -1) report_error("[laryngologist.c] msgget_pat_laryng", 1);
 
-    //SEMAPHORE MESSAGE QUEUE PATIENT<->LARYNGOLOGIST
-    key_t key_sem_msg_pat_laryng = ftok(FTOK_PATH, ID_SEM_MSG_LARYNG);
-    if(key_sem_msg_pat_laryng == -1) report_error("[director.c] key_sem_msg_pat_laryng", 1);
+    // SEMAPHORE FOR QUEUE
+    key_t key_sem_laryng = ftok(FTOK_PATH, ID_SEM_MSG_LARYNG);
+    if(key_sem_laryng == -1) report_error("[laryngologist.c] key_sem_laryng", 1);
 
-    int semget_msg_pat_laryng = semget(key_sem_msg_pat_laryng, 1, 0600 | IPC_CREAT);
-    if(semget_msg_pat_laryng == -1) report_error("[director.c] semget_msg_pat_laryng", 1);
+    int semget_laryng = semget(key_sem_laryng, 1, 0600);
+    if(semget_laryng == -1) report_error("[laryngologist.c] semget_laryng", 1);
+
+      struct PatientCard card;
 
 
-    while(1){
-        if(go_to_ward) {
+    LOG_PRINTF("|LARYNGOLOGIST %d| Ready for patients.", getpid());
+
+    while(terminate!=1){
+        if(go_to_ward==1){
             visit_ward();
         }
 
-        LOG_PRINTF("|LARYNGOLOGIST %d| Waiting for a patient...", getpid());
+        LOG_PRINTF("|LARYNGOLOGIST %d| Waiting for patient...", getpid());
 
-        int msgrcv_pat_laryng = msgrcv(msg_pat_laryng, &filled_card, sizeof(struct PatientCard) - sizeof(long), -3, 0);
+        int msgrcv_pat_laryng = msgrcv(msgget_pat_laryng, &card, sizeof(struct PatientCard) - sizeof(long), -3, 0);
 
-        if (msgrcv_pat_laryng == -1) {
-            if (errno == EINTR) {
-                if(go_to_ward) {
-                    visit_ward();
-                }
+        if(msgrcv_pat_laryng == -1) {
+            if(errno == EINTR) {
                 continue;
-            } 
-            else {
-                report_error("[laryngologist.c] msgrcv_pat_laryng", 1);
             }
+            report_error("[laryngologist.c] msgrcv_pat_laryng", 1);
         }
 
-        LOG_PRINTF("|LARYNGOLOGIST %d| Patient %d came! Starting examination...", getpid(), filled_card.patient_id);
+        LOG_PRINTF("|LARYNGOLOGIST %d| Examining patient %d...", getpid(), card.patient_id);
 
         int random = rand() % 1000;
-
-        if(random < 145){
-            filled_card.sdoc_dec = SENT_TO_WARD;
-        }
-        else if(random < 150){
-            filled_card.sdoc_dec = OTHER_S_HOSP;
-        }
-        else{
-            filled_card.sdoc_dec = SENT_HOME;
+        if(random < 145) {
+            card.sdoc_dec = SENT_TO_WARD;
+        } else if(random < 150) {
+            card.sdoc_dec = OTHER_S_HOSP;
+        } else {
+            card.sdoc_dec = SENT_HOME;
         }
 
-        filled_card.mtype = filled_card.patient_id;
-        
-        int msg_sent = 0;
-        while (msg_sent != 1) {
-            int msgsnd_pat_laryng = msgsnd(msg_pat_laryng, &filled_card, sizeof(filled_card) - sizeof(long), 0);
-            if (msgsnd_pat_laryng == -1) {
-                if (errno == EINTR) {
-                    if(go_to_ward) {
-                        visit_ward();
-                    }
-                    continue; 
-                } 
-                else {
-                    report_error("[laryngologist.c] msgsnd_pat_laryng", 1);
-                }
+        card.mtype = card.patient_id;
+
+        while(msgsnd(msgget_pat_laryng, &card, sizeof(struct PatientCard) - sizeof(long), 0) == -1) {
+            if(errno == EINTR) {
+                if(go_to_ward) visit_ward();
+                continue;
             }
-            msg_sent = 1;
+            report_error("[laryngologist.c] msgsnd_pat_laryng", 1);
         }
 
-        LOG_PRINTF("|LARYNGOLOGIST %d| Patient %d examinated!", getpid(), filled_card.patient_id);
+        LOG_PRINTF("|LARYNGOLOGIST %d| Patient %d examinated!", getpid(), card.patient_id);
 
-        free_slot(semget_msg_pat_laryng);
+        sem_release(semget_laryng);
         increment_doctor_count(DOC_LARYNGOLOGIST);
-
-        if(go_to_ward) {
-            visit_ward();
-        }
     }
 
-
+    LOG_PRINTF("|LARYNGOLOGIST %d| Received signal from director, evacuation!", getpid());
     return 0;
 }

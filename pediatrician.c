@@ -1,113 +1,101 @@
 #include "errors.h"
 #include "common.h"
 
-volatile int go_to_ward = 0;
+volatile sig_atomic_t go_to_ward = 0;
+volatile sig_atomic_t terminate = 0;
 
-void handle_signal(int sig) {
+void handle_signal(int sig){
+    (void)sig;
     go_to_ward = 1;
 }
 
-void visit_ward() {
-    LOG_PRINTF("|PEDIATRICIAN %d| Received signal from DIRECTOR. Going to ward...", getpid());
-    
-    //int pause = (rand() % 5) + 3;
-    //sleep(pause);
-    
-    LOG_PRINTF("|PEDIATRICIAN %d| Returned from ward to ER.", getpid());
-    
+void handle_terminate(int sig) {
+    (void)sig;
+    terminate = 1;
+}
+
+void visit_ward(){
+    LOG_PRINTF("|PEDIATRICIAN %d| Going to ward...", getpid());
+    LOG_PRINTF("|PEDIATRICIAN %d| Returned from ward.", getpid());
     go_to_ward = 0;
 }
 
-
-
 int main(){
-    signal(SIGUSR1, handle_signal);
+    struct sigaction sa_term, sa_ward;
+    
+    sa_term.sa_handler = handle_terminate;
+    sigemptyset(&sa_term.sa_mask);
+    sa_term.sa_flags = 0;
+    sigaction(SIGTERM, &sa_term, NULL);
+    
+    sa_ward.sa_handler = handle_signal;
+    sigemptyset(&sa_ward.sa_mask);
+    sa_ward.sa_flags = 0;
+    sigaction(SIGUSR1, &sa_ward, NULL);
 
     srand(time(NULL) ^ getpid());
     
-    struct PatientCard filled_card;
+    // MESSAGE QUEUE PATIENT<->PEDIATRICIAN
+    key_t key_msg = ftok(FTOK_PATH, ID_MSG_PAT_PEDIATR);
+    if(key_msg == -1) report_error("[pediatrician.c] ftok msg", 1);
 
-    //MESSAGE QUEUE PATIENT<->PEDIATRICIAN
-    key_t key_msg_pat_pediatr = ftok(FTOK_PATH, ID_MSG_PAT_PEDIATR);
-    if(key_msg_pat_pediatr == -1) report_error("[pediatrician.c] error: key_msg_pat_pediatr", 1);
+    int msg_queue = msgget(key_msg, 0600);
+    if(msg_queue == -1) report_error("[pediatrician.c] msgget", 1);
 
-    int msg_pat_pediatr = msgget(key_msg_pat_pediatr, 0600 | IPC_CREAT);
-    if(msg_pat_pediatr == -1) report_error("[pediatrician.c] error: msg_pat_pediatr", 1);
+    // SEMAPHORE FOR QUEUE
+    key_t key_sem = ftok(FTOK_PATH, ID_SEM_MSG_PEDIATR);
+    if(key_sem == -1) report_error("[pediatrician.c] ftok sem", 1);
 
+    int sem_pediatr = semget(key_sem, 1, 0600);
+    if(sem_pediatr == -1) report_error("[pediatrician.c] sem_pediatr", 1);
 
-    //SEMAPHORE MESSAGE QUEUE PATIENT<->PEDIATRICIAN
-    key_t key_sem_msg_pat_pediatr = ftok(FTOK_PATH, ID_SEM_MSG_PEDIATR);
-    if(key_sem_msg_pat_pediatr == -1) report_error("[director.c] key_sem_msg_pat_pediatr", 1);
+    LOG_PRINTF("|PEDIATRICIAN %d| Ready.", getpid());
 
-    int semget_msg_pat_pediatr = semget(key_sem_msg_pat_pediatr, 1, 0600 | IPC_CREAT);
-    if(semget_msg_pat_pediatr == -1) report_error("[director.c] semget_msg_pat_pediatr", 1);
+    struct PatientCard card;
 
-
-    while(1){
-        if(go_to_ward) {
+    while(!terminate){
+        if(go_to_ward){
             visit_ward();
         }
 
-        LOG_PRINTF("|PEDIATRICIAN %d| Waiting for a patient...", getpid());
+        LOG_PRINTF("|PEDIATRICIAN %d| Waiting for patient...", getpid());
 
-        int msgrcv_pat_pediatr = msgrcv(msg_pat_pediatr, &filled_card, sizeof(struct PatientCard) - sizeof(long), -3, 0);
+        int msgrcv_pat_pediatr = msgrcv(msg_queue, &card, sizeof(struct PatientCard) - sizeof(long), -3, 0);
 
-        if (msgrcv_pat_pediatr == -1) {
-            if (errno == EINTR) {
-                if(go_to_ward) {
-                    visit_ward();
-                }
+        if(msgrcv_pat_pediatr == -1) {
+            if(errno == EINTR) {
                 continue;
-            } 
-            else {
-                report_error("[pediatrician.c] msgrcv_pat_pediatr", 1);
             }
+            report_error("[pediatrician.c] msgrcv", 1);
         }
 
-        LOG_PRINTF("|PEDIATRICIAN %d| Patient %d came! Starting examination...", getpid(), filled_card.patient_id);
-
+        LOG_PRINTF("|PEDIATRICIAN %d| Examining patient %d...", getpid(), card.patient_id);
 
         int random = rand() % 1000;
-
-        if(random < 145){
-            filled_card.sdoc_dec = SENT_TO_WARD;
-        }
-        else if(random < 150){
-            filled_card.sdoc_dec = OTHER_S_HOSP;
-        }
-        else{
-            filled_card.sdoc_dec = SENT_HOME;
+        if(random < 145) {
+            card.sdoc_dec = SENT_TO_WARD;
+        } else if(random < 150) {
+            card.sdoc_dec = OTHER_S_HOSP;
+        } else {
+            card.sdoc_dec = SENT_HOME;
         }
 
-        filled_card.mtype = filled_card.patient_id;
+        card.mtype = card.patient_id;
 
-        int msg_sent = 0;
-        while (msg_sent != 1) {
-            int msgsnd_pat_pediatr = msgsnd(msg_pat_pediatr, &filled_card, sizeof(filled_card) - sizeof(long), 0);
-            if (msgsnd_pat_pediatr == -1) {
-                if (errno == EINTR) {
-                    if(go_to_ward) {
-                        visit_ward();
-                    }
-                    continue; 
-                } 
-                else {
-                    report_error("[pediatrician.c] msgsnd_pat_cardio", 1);
-                }
+        while(msgsnd(msg_queue, &card, sizeof(struct PatientCard) - sizeof(long), 0) == -1) {
+            if(errno == EINTR) {
+                if(go_to_ward) visit_ward();
+                continue;
             }
-            msg_sent = 1;
+            report_error("[pediatrician.c] msgsnd", 1);
         }
 
-        LOG_PRINTF("|PEDIATRICIAN %d| Patient %d examinated!", getpid(), filled_card.patient_id);
+        LOG_PRINTF("|PEDIATRICIAN %d| Patient %d examinated!", getpid(), card.patient_id);
 
-        free_slot(semget_msg_pat_pediatr);
+        sem_release(sem_pediatr);
         increment_doctor_count(DOC_PEDIATRICIAN);
-
-        if(go_to_ward) {
-            visit_ward();
-        }
     }
 
-
+    LOG_PRINTF("|PEDIATRICIAN %d| Evacuation!", getpid());
     return 0;
 }
