@@ -3,7 +3,6 @@
 #include <pthread.h>
 #include <sys/signalfd.h>
 
-//PRZEPATRZEC TEN TYPESHIIIIIIIIIIIIIIIIIIIIIIT
 
 
 volatile sig_atomic_t gen_running = 1;
@@ -131,7 +130,6 @@ int main(){
     pid_t pid;
     int status;
     while((pid = wait(&status)) > 0 || (pid == -1 && errno == EINTR)) {
-        // wait() blokuje do zakończenia dowolnego dziecka
     }
 
     reaper_running = 0;

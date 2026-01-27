@@ -203,7 +203,7 @@ void cleanup_ipc() {
 }
 
 void cleanup_processes() {
-    
+
     // STOPPING GENERATOR
     if(g_pids[2] > 0) {
         kill(g_pids[2], SIGTERM);
