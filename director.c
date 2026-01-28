@@ -373,7 +373,7 @@ int init_semaphores(int N) {
     if(key_sem_gen == -1) report_error("[director.c] key_sem_gen", 1);
     g_semget_gen = semget(key_sem_gen, 1, 0600 | IPC_CREAT);
     if(g_semget_gen == -1) report_error("[director.c] g_semget_gen", 1);
-    sem.val = 20000;
+    sem.val = 50;
     int semctl_gen = semctl(g_semget_gen, 0, SETVAL, sem);
     if(semctl_gen == -1) report_error("[director.c] semctl_gen", 1);
     return 0;

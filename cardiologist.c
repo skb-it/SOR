@@ -93,7 +93,7 @@ int main(){
             report_error("[cardiologist.c] msgsnd_cardio_pat", 1);
         }
 
-        LOG_PRINTF("|CARDIOLOGIST %d| Patient %d is examinated", getpid(), card.patient_id, card.sdoc_dec);
+        LOG_PRINTF("|CARDIOLOGIST %d| Patient %d is examinated", getpid(), card.patient_id);
 
         sem_release(semget_msg_cardio);
         
