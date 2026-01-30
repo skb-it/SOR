@@ -196,6 +196,22 @@ int main(){
         report_error("[patient.c] msgrcv_pat_specialist", 1);
     }
 
+    if(filled_card.sdoc_dec == -1) {
+        LOG_PRINTF("|PATIENT %d| Specialist %s is unavailable, leaving hospital%s.",
+                   patient_id, specialist_name, has_guardian ? " (with guardian)" : "");
+        
+        sem_release(sem_specialist);
+        
+        key_t key_sem_gen = ftok(FTOK_PATH, ID_SEM_GEN);
+        if(key_sem_gen != -1) {
+            int sem_gen = semget(key_sem_gen, 1, 0600);
+            if(sem_gen != -1) {
+                sem_release(sem_gen);
+            }
+        }
+        return 0;
+    }
+
     LOG_PRINTF("|PATIENT %d| Treatment by %s completed, decision=%d%s", 
                patient_id, specialist_name, filled_card.sdoc_dec,
                has_guardian ? " (with guardian)" : "");

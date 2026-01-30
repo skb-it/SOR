@@ -122,7 +122,6 @@ union semun {
     unsigned short *array;
 };
 
-// Funkcje semaforowe
 int safe_semop(int semid, struct sembuf *sops, size_t nsops);
 int sem_acquire(int semid);
 int sem_release(int semid);
@@ -131,11 +130,9 @@ int producer_signal_data(int semid);
 int consumer_wait_data(int semid, volatile sig_atomic_t *interrupt_flag);
 int consumer_signal_slot(int semid);
 
-// Logowanie
 void write_log(const char *format, ...);
 #define LOG_PRINTF(fmt, ...) write_log(fmt, ##__VA_ARGS__)
 
-// Statystyki
 struct PatientStats* stats_attach(int *shm_id, int *sem_id);
 void increment_doctor_count(int doctor_type);
 void increment_pc_doctor_count(void);

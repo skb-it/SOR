@@ -207,7 +207,7 @@ void cleanup_processes() {
     // STOPPING GENERATOR
     if(g_pids[2] > 0) {
         kill(g_pids[2], SIGTERM);
-        waitpid(g_pids[2], NULL, 0);
+        waitpid(g_pids[2], NULL, WNOHANG);
         g_pids[2] = 0;
     }
     
@@ -218,13 +218,34 @@ void cleanup_processes() {
         }
     }
 
-    //WAITING FOR PROCESSES TO CLOSE
+    int remaining_processes = 0;
     for(int i = 0; i < 10; i++) {
         if(g_pids[i] > 0) {
-            waitpid(g_pids[i], NULL, 0);
-            g_pids[i] = 0;
+            int status;
+            if(waitpid(g_pids[i], &status, WNOHANG) == 0) {
+                remaining_processes++;
+            } else {
+                g_pids[i] = 0;
+            }
         }
     }
+    
+    //SIGKILL TO ANY REMAINING PROCESSES
+    if(remaining_processes > 0) {
+        for(int i = 0; i < 10; i++) {
+            if(g_pids[i] > 0) {
+                kill(g_pids[i], SIGKILL);
+            }
+        }
+        
+        for(int i = 0; i < 10; i++) {
+            if(g_pids[i] > 0) {
+                waitpid(g_pids[i], NULL, WNOHANG);
+                g_pids[i] = 0;
+            }
+        }
+    }
+    
     //COLLECTING ZOMBIES THAT HAVENT BEEN REMOVED
     while(waitpid(-1, NULL, WNOHANG) > 0);
 }
@@ -373,7 +394,7 @@ int init_semaphores(int N) {
     if(key_sem_gen == -1) report_error("[director.c] key_sem_gen", 1);
     g_semget_gen = semget(key_sem_gen, 1, 0600 | IPC_CREAT);
     if(g_semget_gen == -1) report_error("[director.c] g_semget_gen", 1);
-    sem.val = 50;
+    sem.val = 100;
     int semctl_gen = semctl(g_semget_gen, 0, SETVAL, sem);
     if(semctl_gen == -1) report_error("[director.c] semctl_gen", 1);
     return 0;
@@ -542,11 +563,16 @@ void print_final_report() {
 
     int specialist_total = final_stats->cardiologist_count + final_stats->neurologist_count + final_stats->eye_doctor_count + final_stats->laryngologist_count + final_stats->surgeon_count + final_stats->pediatrician_count;
 
-    int sent_to_specialists = final_stats->pc_doctor_count - final_stats->sent_home;
+    int pc_doctor_actual = final_stats->pc_doctor_count;
+    if(pc_doctor_actual > final_stats->total_patients) {
+        pc_doctor_actual = final_stats->total_patients;
+    }
+
+    int sent_to_specialists = pc_doctor_actual - final_stats->sent_home;
 
     LOG_PRINTF("\n========== FINAL REPORT ==========");
     LOG_PRINTF("Total patients generated: %d", final_stats->total_patients);
-    LOG_PRINTF("Patients treated by PC Doctor: %d", final_stats->pc_doctor_count);
+    LOG_PRINTF("Patients treated by PC Doctor: %d", pc_doctor_actual);
     LOG_PRINTF("Patients sent home (by PC Doctor): %d", final_stats->sent_home);
     LOG_PRINTF("Patients referred to specialists: %d", sent_to_specialists);
     LOG_PRINTF("Patients treated by specialists: %d", specialist_total);
@@ -557,7 +583,7 @@ void print_final_report() {
     LOG_PRINTF("  - Surgeon: %d", final_stats->surgeon_count);
     LOG_PRINTF("  - Pediatrician: %d", final_stats->pediatrician_count);
     
-    int waiting_for_pc = final_stats->total_patients - final_stats->pc_doctor_count;
+    int waiting_for_pc = final_stats->total_patients - pc_doctor_actual;
     int waiting_for_specialist = sent_to_specialists - specialist_total;
     
     if(waiting_for_pc > 0 || waiting_for_specialist > 0) {
@@ -589,6 +615,74 @@ void manage_registration(int N, int patients_in_queue) {
         kill(g_pids[1], SIGUSR2);
         waitpid(g_pids[1], NULL, 0);
         g_pids[1] = 0;
+    }
+}
+
+void check_and_remove_from_specialist_queue(int queue_id, int specialist_index, const char *specialist_name) {
+    struct msqid_ds queue_stat;
+
+    if(msgctl(queue_id, IPC_STAT, &queue_stat) == -1) {
+        return;
+    }
+    
+    if(queue_stat.msg_qnum > 0 && g_pids[specialist_index] > 0) {
+        pid_t pid = g_pids[specialist_index];
+        char status_path[64];
+        snprintf(status_path, sizeof(status_path), "/proc/%d/status", pid);
+        
+        FILE *status_file = fopen(status_path, "r");
+        int is_suspended = 0;
+        
+        if(status_file == NULL) {
+            is_suspended = 1;
+        } else {
+            char line[256];
+            while(fgets(line, sizeof(line), status_file) != NULL) {
+                if(strncmp(line, "State:", 6) == 0) {
+                    if(strchr(line, 'T') != NULL) {
+                        is_suspended = 1;
+                    }
+                    break;
+                }
+            }
+            fclose(status_file);
+        }
+        
+        if(is_suspended!=1) return;
+
+        if(status_file == NULL) {
+            LOG_PRINTF("|DIRECTOR| %s (PID %d) is dead, removing patients from queue",
+                       specialist_name, pid);
+        } else {
+            LOG_PRINTF("|DIRECTOR| %s (PID %d) is suspended, removing patients from queue",
+                       specialist_name, pid);
+        }
+        
+        struct PatientCard msg;
+        int removed_count = 0;
+        while(msgrcv(queue_id, &msg, sizeof(struct PatientCard) - sizeof(long), -3, IPC_NOWAIT) != -1) {
+            removed_count++;
+            LOG_PRINTF("|DIRECTOR| Removed patient %d from %s queue", msg.patient_id, specialist_name);
+            
+            msg.mtype = msg.patient_id;
+            msg.sdoc_dec = -1;
+            
+            if(msgsnd(queue_id, &msg, sizeof(struct PatientCard) - sizeof(long), IPC_NOWAIT) == -1) {
+                if(errno == EAGAIN || errno == EWOULDBLOCK) {
+                    if(msgsnd(queue_id, &msg, sizeof(struct PatientCard) - sizeof(long), 0) == -1) {
+                        if(errno != EINTR) {
+                            LOG_PRINTF("|DIRECTOR| Failed to send rejection to patient %d", msg.patient_id);
+                        }
+                    }
+                } else if(errno != EINTR) {
+                    LOG_PRINTF("|DIRECTOR| Error sending rejection to patient %d: %d", msg.patient_id, errno);
+                }
+            }
+        }
+        
+        if(removed_count > 0) {
+            LOG_PRINTF("|DIRECTOR| Removed total %d patients from %s queue", removed_count, specialist_name);
+        }
     }
 }
 
@@ -657,21 +751,44 @@ int main() {
 
     struct msqid_ds queue_stat;
     time_t last_check = time(NULL);
+    time_t last_doctor_check = time(NULL);
 
     while(is_ER_open==1) {
+        if(is_ER_open!=1){
+            break;
+        }
+
         if(msgctl(g_msg_pat_reg, IPC_STAT, &queue_stat) == -1) {
             if(errno == EINTR) continue;
             report_error("[director.c] msgctl queue stat", 0);
             continue;
         }
 
+        if(is_ER_open!=1){
+            break;
+        }
+
         manage_registration(N, queue_stat.msg_qnum);
+
+        if(time(NULL) > last_doctor_check) {
+            last_doctor_check = time(NULL);
+            check_and_remove_from_specialist_queue(g_msg_pat_cardio, 3, "CARDIOLOGIST");
+            check_and_remove_from_specialist_queue(g_msg_pat_neuro, 4, "NEUROLOGIST");
+            check_and_remove_from_specialist_queue(g_msg_pat_eye, 5, "EYE DOCTOR");
+            check_and_remove_from_specialist_queue(g_msg_pat_laryng, 6, "LARYNGOLOGIST");
+            check_and_remove_from_specialist_queue(g_msg_pat_surgeon, 7, "SURGEON");
+            check_and_remove_from_specialist_queue(g_msg_pat_pediatr, 8, "PEDIATRICIAN");
+        }
 
         if(time(NULL) > last_check) {
             last_check = time(NULL);
             if((rand() % 100) < 5) {
                 send_doctor_to_ward();
             }
+        }
+        
+        if(is_ER_open!=1){
+            break;
         }
     }
 
