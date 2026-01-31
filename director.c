@@ -558,17 +558,20 @@ void print_final_report() {
 
     int specialist_total = final_stats->cardiologist_count + final_stats->neurologist_count + final_stats->eye_doctor_count + final_stats->laryngologist_count + final_stats->surgeon_count + final_stats->pediatrician_count;
 
-    int pc_doctor_actual = final_stats->pc_doctor_count;
-    if(pc_doctor_actual > final_stats->total_patients) {
-        pc_doctor_actual = final_stats->total_patients;
+    int pc_doctor_count = final_stats->pc_doctor_count;
+    int sent_home = final_stats->sent_home;
+    int total_patients = final_stats->total_patients;
+    
+    int sent_to_specialists = pc_doctor_count - sent_home;
+    
+    if(total_patients < pc_doctor_count) {
+        total_patients = pc_doctor_count;
     }
 
-    int sent_to_specialists = pc_doctor_actual - final_stats->sent_home;
-
     LOG_PRINTF("\n========== FINAL REPORT ==========");
-    LOG_PRINTF("Total patients generated: %d", final_stats->total_patients);
-    LOG_PRINTF("Patients treated by PC Doctor: %d", pc_doctor_actual);
-    LOG_PRINTF("Patients sent home (by PC Doctor): %d", final_stats->sent_home);
+    LOG_PRINTF("Total patients generated: %d", total_patients);
+    LOG_PRINTF("Patients treated by PC Doctor: %d", pc_doctor_count);
+    LOG_PRINTF("Patients sent home (by PC Doctor): %d", sent_home);
     LOG_PRINTF("Patients referred to specialists: %d", sent_to_specialists);
     LOG_PRINTF("Patients treated by specialists: %d", specialist_total);
     LOG_PRINTF("  - Cardiologist: %d", final_stats->cardiologist_count);
@@ -578,7 +581,7 @@ void print_final_report() {
     LOG_PRINTF("  - Surgeon: %d", final_stats->surgeon_count);
     LOG_PRINTF("  - Pediatrician: %d", final_stats->pediatrician_count);
     
-    int waiting_for_pc = final_stats->total_patients - pc_doctor_actual;
+    int waiting_for_pc = total_patients - pc_doctor_count;
     int waiting_for_specialist = sent_to_specialists - specialist_total;
     
     if(waiting_for_pc > 0 || waiting_for_specialist > 0) {
