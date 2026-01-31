@@ -26,12 +26,12 @@ int main(){
     sa_term.sa_handler = handle_terminate;
     sigemptyset(&sa_term.sa_mask);
     sa_term.sa_flags = 0;
-    sigaction(SIGTERM, &sa_term, NULL);
+    if(sigaction(SIGTERM, &sa_term, NULL) == -1) report_error("[pediatrician.c] sigaction SIGTERM", 1);
     
     sa_ward.sa_handler = handle_signal;
     sigemptyset(&sa_ward.sa_mask);
     sa_ward.sa_flags = 0;
-    sigaction(SIGUSR1, &sa_ward, NULL);
+    if(sigaction(SIGUSR1, &sa_ward, NULL) == -1) report_error("[pediatrician.c] sigaction SIGUSR1", 1);
 
     srand(time(NULL) ^ getpid());
     

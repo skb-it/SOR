@@ -54,7 +54,7 @@ int main(){
     sa.sa_handler = handle_terminate;
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = 0;
-    sigaction(SIGTERM, &sa, NULL);
+    if(sigaction(SIGTERM, &sa, NULL) == -1) report_error("[pc_doctor.c] sigaction SIGTERM", 1);
     
     srand(time(NULL) ^ getpid());
 
@@ -82,6 +82,13 @@ int main(){
     int semget_doc = semget(key_sem_doc, 2, 0600);
     if(semget_doc == -1) report_error("[pc_doctor.c] semget_doc", 1);
 
+    // SEMAPHORE FOR MESSAGE QUEUE PC DOCTOR->PATIENT
+    key_t key_sem_msg_pat_doc = ftok(FTOK_PATH, ID_SEM_MSG_PAT_DOC);
+    if(key_sem_msg_pat_doc == -1) report_error("[pc_doctor.c] key_sem_msg_pat_doc", 1);
+
+    int semget_msg_pat_doc = semget(key_sem_msg_pat_doc, 1, 0600);
+    if(semget_msg_pat_doc == -1) report_error("[pc_doctor.c] semget_msg_pat_doc", 1);
+
     LOG_PRINTF("|DOCTOR %d| Ready to receive patients.", getpid());
 
     while(terminate != 1){
@@ -105,22 +112,26 @@ int main(){
         local_card.mtype = local_card.patient_id;
         
         if(local_card.triage == SENT_HOME){
+            sem_acquire(semget_msg_pat_doc);
             if(msgsnd(msg_doc_pat, &local_card, sizeof(struct PatientCard) - sizeof(long), 0) == -1) {
                 if(errno != EINTR) {
                     report_error("[pc_doctor.c] msgsnd_doc_pat (home)", 1);
                 }
             }
+            sem_release(semget_msg_pat_doc);
             increment_sent_home_count();
             LOG_PRINTF("|DOCTOR %d| Patient %d sent home.", getpid(), local_card.patient_id);
         }
         else{
             asses_doc(&local_card);
             
+            sem_acquire(semget_msg_pat_doc);
             if(msgsnd(msg_doc_pat, &local_card, sizeof(struct PatientCard) - sizeof(long), 0) == -1) {
                 if(errno != EINTR) {
                     report_error("[pc_doctor.c] msgsnd_doc_pat (specialist)", 1);
                 }
             }
+            sem_release(semget_msg_pat_doc);
             LOG_PRINTF("|DOCTOR %d| Patient %d sent to specialist %d.", getpid(), local_card.patient_id, local_card.sdoc);
         }
 

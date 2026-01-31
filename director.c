@@ -204,14 +204,11 @@ void cleanup_ipc() {
 
 void cleanup_processes() {
 
-    // STOPPING GENERATOR
     if(g_pids[2] > 0) {
         kill(g_pids[2], SIGTERM);
         waitpid(g_pids[2], NULL, WNOHANG);
         g_pids[2] = 0;
     }
-    
-    //SIGTERM TO OTHER PROCESSES
     for(int i = 0; i < 10; i++) {
         if(g_pids[i] > 0) {
             kill(g_pids[i], SIGTERM);
@@ -230,7 +227,6 @@ void cleanup_processes() {
         }
     }
     
-    //SIGKILL TO ANY REMAINING PROCESSES
     if(remaining_processes > 0) {
         for(int i = 0; i < 10; i++) {
             if(g_pids[i] > 0) {
@@ -246,7 +242,6 @@ void cleanup_processes() {
         }
     }
     
-    //COLLECTING ZOMBIES THAT HAVENT BEEN REMOVED
     while(waitpid(-1, NULL, WNOHANG) > 0);
 }
 
@@ -282,7 +277,7 @@ int init_shared_memory() {
     //SETTING WHOLE STRUCTURE TO 0
     memset(stats, 0, sizeof(struct PatientStats));
 
-    shmdt(stats);
+    if(shmdt(stats) == -1) report_error("[director.c] shmdt stats init", 0);
 
     return 0;
 }
@@ -339,7 +334,7 @@ int init_semaphores(int N) {
     if(semctl_sem_doc_1 == -1) report_error("[director.c] semctl_doc_1", 1);
 
     // SEMAPHORES FOR SPECIALIST QUEUES
-    sem.val = 5000;
+    sem.val = 500;
     key_t key_sem_msg_pat_doc = ftok(FTOK_PATH, ID_SEM_MSG_PAT_DOC);
     if(key_sem_msg_pat_doc == -1) report_error("[director.c] key_sem_msg_pat_doc", 1);
     g_semget_msg_pat_doc = semget(key_sem_msg_pat_doc, 1, 0600 | IPC_CREAT);
@@ -394,7 +389,7 @@ int init_semaphores(int N) {
     if(key_sem_gen == -1) report_error("[director.c] key_sem_gen", 1);
     g_semget_gen = semget(key_sem_gen, 1, 0600 | IPC_CREAT);
     if(g_semget_gen == -1) report_error("[director.c] g_semget_gen", 1);
-    sem.val = 100;
+    sem.val = 10000;
     int semctl_gen = semctl(g_semget_gen, 0, SETVAL, sem);
     if(semctl_gen == -1) report_error("[director.c] semctl_gen", 1);
     return 0;
@@ -593,7 +588,7 @@ void print_final_report() {
     }
     LOG_PRINTF("==================================\n");
     
-    shmdt(final_stats);
+    if(shmdt(final_stats) == -1) report_error("[director.c] shmdt final_stats", 0);
 }
 
 void manage_registration(int N, int patients_in_queue) {
@@ -620,9 +615,9 @@ void manage_registration(int N, int patients_in_queue) {
 
 void check_and_remove_from_specialist_queue(int queue_id, int specialist_index, const char *specialist_name) {
     struct msqid_ds queue_stat;
-
+    
     if(msgctl(queue_id, IPC_STAT, &queue_stat) == -1) {
-        return;
+        report_error("[director.c] msgctl_queue_stat", 1);
     }
     
     if(queue_stat.msg_qnum > 0 && g_pids[specialist_index] > 0) {
@@ -648,8 +643,8 @@ void check_and_remove_from_specialist_queue(int queue_id, int specialist_index, 
             fclose(status_file);
         }
         
-        if(is_suspended!=1) return;
-
+        if(!is_suspended) return;
+        
         if(status_file == NULL) {
             LOG_PRINTF("|DIRECTOR| %s (PID %d) is dead, removing patients from queue",
                        specialist_name, pid);
@@ -697,7 +692,7 @@ void send_doctor_to_ward() {
 int main() {
 
     atexit(cleanup_ipc);
-  
+    
     srand(time(NULL));
 
     printf("|DIRECTOR| Opening ER...\n");
@@ -715,12 +710,12 @@ int main() {
     sa_int.sa_handler = evacuation;
     sigemptyset(&sa_int.sa_mask);
     sa_int.sa_flags = 0;
-    sigaction(SIGINT, &sa_int, NULL);
+    if(sigaction(SIGINT, &sa_int, NULL) == -1) report_error("[director.c] sigaction SIGINT", 1);
     
     sa_chld.sa_handler = handle_sigchld;
     sigemptyset(&sa_chld.sa_mask);
     sa_chld.sa_flags = SA_RESTART | SA_NOCLDSTOP;
-    sigaction(SIGCHLD, &sa_chld, NULL);
+    if(sigaction(SIGCHLD, &sa_chld, NULL) == -1) report_error("[director.c] sigaction SIGCHLD", 1);
 
     if(init_shared_memory() == -1){
         cleanup_ipc();
@@ -754,19 +749,15 @@ int main() {
     time_t last_doctor_check = time(NULL);
 
     while(is_ER_open==1) {
-        if(is_ER_open!=1){
-            break;
-        }
-
+        if(!is_ER_open) break;
+        
         if(msgctl(g_msg_pat_reg, IPC_STAT, &queue_stat) == -1) {
             if(errno == EINTR) continue;
             report_error("[director.c] msgctl queue stat", 0);
             continue;
         }
 
-        if(is_ER_open!=1){
-            break;
-        }
+        if(!is_ER_open) break;
 
         manage_registration(N, queue_stat.msg_qnum);
 
@@ -787,9 +778,7 @@ int main() {
             }
         }
         
-        if(is_ER_open!=1){
-            break;
-        }
+        if(!is_ER_open) break;
     }
 
     LOG_PRINTF("|DIRECTOR| EVACUATION!");

@@ -80,7 +80,7 @@ int main(){
     sa.sa_handler = handle_gen_signal;
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = 0;
-    sigaction(SIGTERM, &sa, NULL);
+    if(sigaction(SIGTERM, &sa, NULL) == -1) report_error("[generator.c] sigaction SIGTERM", 1);
 
     pthread_t killer_thread;
     if(pthread_create(&killer_thread, NULL, zombie_killer, NULL) != 0) {

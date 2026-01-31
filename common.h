@@ -73,10 +73,6 @@
 #define DOC_SURGEON       5
 #define DOC_PEDIATRICIAN  6
 
-struct Data {
-    int N;
-};
-
 struct PatientStats {
     int total_patients;
     int cardiologist_count;
@@ -87,14 +83,6 @@ struct PatientStats {
     int pediatrician_count;
     int pc_doctor_count;
     int sent_home;
-    int specialist_treated;
-};
-
-struct PatientInfo {
-    long mtype;
-    pid_t patient_id;
-    int age;
-    int is_guardian;
 };
 
 struct Msg {
@@ -106,14 +94,12 @@ struct Msg {
 
 struct PatientCard {
     long mtype;
-    int is_vip;
     pid_t patient_id;
     int age;
     int is_guardian;
     int triage;
     int sdoc;
     int sdoc_dec;
-    int flag;
 };
 
 union semun {
@@ -139,9 +125,6 @@ void increment_pc_doctor_count(void);
 void increment_total_patients(void);
 void increment_sent_home_count(void);
 
-#define SHM_SIZE_INT sizeof(int)
 #define SHM_SIZE_CARD sizeof(struct PatientCard)
-#define SHM_SIZE_INFO sizeof(struct PatientInfo)
-#define SHM_SIZE_STATS sizeof(struct PatientStats)
 
 #endif

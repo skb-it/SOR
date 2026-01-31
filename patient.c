@@ -30,21 +30,43 @@ int main(){
     int sem_waiting_room = semget(key_sem_waiting_room, 1, 0600);
     if(sem_waiting_room == -1) report_error("[patient.c] sem_waiting_room", 1);
 
+    key_t key_sem_gen = ftok(FTOK_PATH, ID_SEM_GEN);
+    int sem_gen = -1;
+    if(key_sem_gen != -1) {
+        sem_gen = semget(key_sem_gen, 1, 0600);
+    }
+
     LOG_PRINTF("|PATIENT %d| Trying to enter waiting room%s...", patient_id, 
                has_guardian ? " (with guardian)" : "");
     
-    if(has_guardian) {
-        if(sem_acquire(sem_waiting_room) == -1) {
-            report_error("[patient.c] enter waiting room (1)", 1);
+
+    struct sembuf sb_try = {0, -1, IPC_NOWAIT | SEM_UNDO};
+    int seats_needed = has_guardian ? 2 : 1;
+    int seats_acquired = 0;
+    
+    for(int i = 0; i < seats_needed; i++) {
+        if(semop(sem_waiting_room, &sb_try, 1) == -1) {
+            if(errno == EAGAIN) {
+                for(int j = 0; j < seats_acquired; j++) {
+                    sem_release(sem_waiting_room);
+                }
+                LOG_PRINTF("|PATIENT %d| Waiting room is full, leaving hospital%s.", 
+                           patient_id, has_guardian ? " (with guardian)" : "");
+                if(sem_gen != -1) {
+                    sem_release(sem_gen);
+                }
+                return 0;
+            } else if(errno == EINTR) {
+                i--;
+                continue;
+            } else {
+                for(int j = 0; j < seats_acquired; j++) {
+                    sem_release(sem_waiting_room);
+                }
+                report_error("[patient.c] enter waiting room", 1);
+            }
         }
-        if(sem_acquire(sem_waiting_room) == -1) {
-            sem_release(sem_waiting_room);
-            report_error("[patient.c] enter waiting room (2)", 1);
-        }
-    } else {
-        if(sem_acquire(sem_waiting_room) == -1) {
-            report_error("[patient.c] enter waiting room", 1);
-        }
+        seats_acquired++;
     }
 
     LOG_PRINTF("|PATIENT %d| Entered waiting room%s, taking registration number.", 

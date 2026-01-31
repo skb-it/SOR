@@ -21,12 +21,12 @@ int main(){
     sa_term.sa_handler = handle_terminate;
     sigemptyset(&sa_term.sa_mask);
     sa_term.sa_flags = 0;
-    sigaction(SIGTERM, &sa_term, NULL);
+    if(sigaction(SIGTERM, &sa_term, NULL) == -1) report_error("[registration.c] sigaction SIGTERM", 1);
     
     sa_close.sa_handler = handle_close;
     sigemptyset(&sa_close.sa_mask);
     sa_close.sa_flags = 0;
-    sigaction(SIGUSR2, &sa_close, NULL);
+    if(sigaction(SIGUSR2, &sa_close, NULL) == -1) report_error("[registration.c] sigaction SIGUSR2", 1);
 
     LOG_PRINTF("|REGISTRATION %d| Opening...", getpid());
     
@@ -89,11 +89,9 @@ int main(){
         card->age = buf.age;
         card->patient_id = buf.patient_id;
         card->is_guardian = buf.is_guardian;
-        card->is_vip = (buf.mtype == VIP) ? 1 : 0;
         card->triage = 0;
         card->sdoc = 0;
         card->sdoc_dec = 0;
-        card->flag = 0;
 
         LOG_PRINTF("|REGISTRATION %d| Patient %d forwarded to primary care doctor!", getpid(), card->patient_id);
 
