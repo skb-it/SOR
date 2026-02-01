@@ -9,6 +9,7 @@ volatile sig_atomic_t gen_running = 1;
 volatile sig_atomic_t killer_running = 1;
 
 int signal_fd = -1;
+int semget_gen_global = -1;
 
 void handle_gen_signal(int sig){
     (void)sig;
@@ -36,7 +37,7 @@ void* zombie_killer(void* arg) {
     
     struct signalfd_siginfo fdsi;
     
-    LOG_PRINTF("[REAPER %d] Zombie killer thread started.", getpid());
+    LOG_PRINTF("[KILLER %d] Zombie killer thread started.", getpid());
     
     while(killer_running) {
         int s = read(signal_fd, &fdsi, sizeof(fdsi));
@@ -49,14 +50,26 @@ void* zombie_killer(void* arg) {
         
         pid_t pid;
         int status;
-        while((pid = waitpid(-1, &status, WNOHANG)) > 0) {
+        while((pid = waitpid(-1, &status, WNOHANG | WUNTRACED)) > 0) {
+            if(WIFSIGNALED(status)) {
+                int sig = WTERMSIG(status);
+                LOG_PRINTF("[KILLER %d] Child %d killed by signal %d, releasing generator semaphore.", getpid(), pid, sig);
+                if(semget_gen_global != -1) {
+                    sem_release(semget_gen_global);
+                }
+            }
+            else if(WIFSTOPPED(status)) {
+                int sig = WSTOPSIG(status);
+                LOG_PRINTF("[KILLER %d] Child %d stopped by signal %d, killing it to prevent deadlock.", getpid(), pid, sig);
+                kill(pid, SIGKILL);
+            }
         }
     }
     
     pid_t pid;
     while((pid = waitpid(-1, NULL, WNOHANG)) > 0);
     
-    LOG_PRINTF("[REAPER %d] Zombie killer thread finished.", getpid());
+    LOG_PRINTF("[KILLER %d] Zombie killer thread finished.", getpid());
     return NULL;
 }
 
@@ -92,6 +105,8 @@ int main(){
 
     int semget_gen = semget(key_sem_gen, 1, 0600);
     if(semget_gen == -1) report_error("[generator.c] semget_gen", 1);
+    
+    semget_gen_global = semget_gen;
 
     LOG_PRINTF("[GENERATOR %d] Started.", getpid());
 
