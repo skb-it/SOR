@@ -7,7 +7,7 @@ generator: generator.c common.c errors.c common.h errors.h
 	gcc -Wall -g generator.c common.c errors.c -o generator -pthread
 
 patient: patient.c common.c errors.c common.h errors.h
-	gcc -Wall -g patient.c common.c errors.c -o patient
+	gcc -Wall -g patient.c common.c errors.c -o patient -pthread
 
 pc_doctor: pc_doctor.c common.c errors.c common.h errors.h
 	gcc -Wall -g pc_doctor.c common.c errors.c -o pc_doctor

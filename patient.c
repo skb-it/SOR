@@ -1,5 +1,30 @@
 #include "common.h"
 #include "errors.h"
+#include <pthread.h>
+
+typedef struct {
+    pid_t patient_id;
+    int age;
+    volatile int *patient_done;
+    pthread_mutex_t *mutex;
+    pthread_cond_t *cond;
+} GuardianArgs;
+
+void *guardian_thread(void *arg) {
+    GuardianArgs *args = (GuardianArgs *)arg;
+    
+    LOG_PRINTF("|GUARDIAN| Im with a child patient %d (age %d).", args->patient_id, args->age);
+    
+    pthread_mutex_lock(args->mutex);
+    while ((*args->patient_done)!=1) {
+        pthread_cond_wait(args->cond, args->mutex);
+    }
+    pthread_mutex_unlock(args->mutex);
+    
+    LOG_PRINTF("|GUARDIAN| Child patient %d finished, guardian leaving hospital.", args->patient_id);
+    
+    return NULL;
+}
 
 void fill_pat_data(struct Msg *buf, int age, int is_guardian, pid_t patient_id){
     buf->patient_id = patient_id;
@@ -19,9 +44,25 @@ int main(){
     int age = rand() % 117;
     pid_t patient_id = getpid();
 
+    pthread_t guardian_tid;
+    volatile int patient_done = 0;
+    pthread_mutex_t guardian_mutex = PTHREAD_MUTEX_INITIALIZER;
+    pthread_cond_t guardian_cond = PTHREAD_COND_INITIALIZER;
+    GuardianArgs guardian_args;
+
     if(age < 18){
         has_guardian = 1;
         LOG_PRINTF("|PATIENT %d| Child (age %d) arrived with guardian.", patient_id, age);
+        
+        guardian_args.patient_id = patient_id;
+        guardian_args.age = age;
+        guardian_args.patient_done = &patient_done;
+        guardian_args.mutex = &guardian_mutex;
+        guardian_args.cond = &guardian_cond;
+        
+        if (pthread_create(&guardian_tid, NULL, guardian_thread, &guardian_args) != 0) {
+            report_error("[patient.c] pthread_create guardian", 1);
+        }
     }
 
     key_t key_sem_waiting_room = ftok(FTOK_PATH, ID_SEM_WAITING_ROOM);
@@ -31,16 +72,18 @@ int main(){
     if(sem_waiting_room == -1) report_error("[patient.c] sem_waiting_room", 1);
 
     key_t key_sem_gen = ftok(FTOK_PATH, ID_SEM_GEN);
-    int sem_gen = -1;
-    if(key_sem_gen != -1) {
-        sem_gen = semget(key_sem_gen, 1, 0600);
-    }
+    if(key_sem_gen == -1) report_error("[patient.c] key_sem_gen", 1);
+    int sem_gen = semget(key_sem_gen, 1, 0600);
+    if(sem_gen==-1) report_error("[patient.c] sem_gen", 1);
 
-    LOG_PRINTF("|PATIENT %d| Trying to enter waiting room%s...", patient_id, 
-               has_guardian ? " (with guardian)" : "");
+    LOG_PRINTF("|PATIENT %d| Trying to enter waiting room...", patient_id);
     
 
-    struct sembuf sb_try = {0, -1, IPC_NOWAIT | SEM_UNDO};
+    struct sembuf sb_try;
+    sb_try.sem_num=0;
+    sb_try.sem_op=-1;
+    sb_try.sem_flg=IPC_NOWAIT | SEM_UNDO;
+
     int seats_needed = has_guardian ? 2 : 1;
     int seats_acquired = 0;
     
@@ -50,10 +93,16 @@ int main(){
                 for(int j = 0; j < seats_acquired; j++) {
                     sem_release(sem_waiting_room);
                 }
-                LOG_PRINTF("|PATIENT %d| Waiting room is full, leaving hospital%s.", 
-                           patient_id, has_guardian ? " (with guardian)" : "");
+                LOG_PRINTF("|PATIENT %d| Waiting room is full, leaving hospital.", patient_id);
                 if(sem_gen != -1) {
                     sem_release(sem_gen);
+                }
+                if(has_guardian==1) {
+                    pthread_mutex_lock(&guardian_mutex);
+                    patient_done = 1;
+                    pthread_cond_signal(&guardian_cond);
+                    pthread_mutex_unlock(&guardian_mutex);
+                    pthread_join(guardian_tid, NULL);
                 }
                 return 0;
             } else if(errno == EINTR) {
@@ -69,8 +118,7 @@ int main(){
         seats_acquired++;
     }
 
-    LOG_PRINTF("|PATIENT %d| Entered waiting room%s, taking registration number.", 
-               patient_id, has_guardian ? " (with guardian)" : "");
+    LOG_PRINTF("|PATIENT %d| Entered waiting room.", patient_id);
 
     key_t key_msg_pat_reg = ftok(FTOK_PATH, ID_MSG_PAT_REG);
     if(key_msg_pat_reg == -1) report_error("[patient.c] key_msg_pat_reg", 1);
@@ -84,7 +132,6 @@ int main(){
     int sem_msg_pat_reg = semget(key_sem_msg_pat_reg, 1, 0600);
     if(sem_msg_pat_reg == -1) report_error("[patient.c] sem_msg_pat_reg", 1);
 
-    //RESERVE QUEUE SLOT TO REGISTRATION
     if(sem_acquire(sem_msg_pat_reg) == -1) {
         report_error("[patient.c] acquire registration queue", 1);
     }
@@ -96,14 +143,12 @@ int main(){
         report_error("[patient.c] msgsnd to registration", 1);
     }
     
-    //LEAVING WAITING ROOM
     sem_release(sem_waiting_room);
-    if(has_guardian) {
+    if(has_guardian==1) {
         sem_release(sem_waiting_room);
     }
 
-    LOG_PRINTF("|PATIENT %d| Registered%s, waiting for PC doctor...", 
-               patient_id, has_guardian ? " (with guardian)" : "");
+    LOG_PRINTF("|PATIENT %d| Registered, waiting for PC doctor..", patient_id);
 
     key_t key_msg_doc_pat = ftok(FTOK_PATH, ID_MSG_PAT_DOC);
     if(key_msg_doc_pat == -1) report_error("[patient.c] key_msg_doc_pat", 1);
@@ -117,12 +162,10 @@ int main(){
         report_error("[patient.c] msgrcv_doc_pat", 1);
     }
 
-    LOG_PRINTF("|PATIENT %d| Received diagnosis from PC doctor, triage=%d%s", 
-               patient_id, filled_card.triage, has_guardian ? " (with guardian)" : "");
+    LOG_PRINTF("|PATIENT %d| Received diagnosis from PC doctor, triage=%d", patient_id, filled_card.triage);
 
     if(filled_card.triage == SENT_HOME){
-        LOG_PRINTF("|PATIENT %d| Sent home by PC doctor%s, leaving.", 
-                   patient_id, has_guardian ? " (with guardian)" : "");
+        LOG_PRINTF("|PATIENT %d| Sent home by PC doctor, leaving.", patient_id);
 
         key_t key_sem_gen = ftok(FTOK_PATH, ID_SEM_GEN);
         if(key_sem_gen != -1) {
@@ -132,8 +175,15 @@ int main(){
             }
         }
 
-        LOG_PRINTF("|PATIENT %d| Leaving hospital%s.", 
-                   patient_id, has_guardian ? " (with guardian)" : "");
+        LOG_PRINTF("|PATIENT %d| Leaving hospital.",patient_id);
+        
+        if(has_guardian==1) {
+            pthread_mutex_lock(&guardian_mutex);
+            patient_done = 1;
+            pthread_cond_signal(&guardian_cond);
+            pthread_mutex_unlock(&guardian_mutex);
+            pthread_join(guardian_tid, NULL);
+        }
         return 0;
     }
 
@@ -185,6 +235,13 @@ int main(){
                 }
             }
             LOG_PRINTF("|PATIENT %d| Leaving hospital.", patient_id);
+            if(has_guardian==1) {
+                pthread_mutex_lock(&guardian_mutex);
+                patient_done = 1;
+                pthread_cond_signal(&guardian_cond);
+                pthread_mutex_unlock(&guardian_mutex);
+                pthread_join(guardian_tid, NULL);
+            }
             return 0;
     }
     
@@ -199,8 +256,7 @@ int main(){
     sem_specialist = semget(key_sem, 1, 0600);
     if(sem_specialist == -1) report_error("[patient.c] semget specialist", 1);
 
-    LOG_PRINTF("|PATIENT %d| Going to %s%s...", patient_id, specialist_name,
-               has_guardian ? " (with guardian)" : "");
+    LOG_PRINTF("|PATIENT %d| Going to %s...", patient_id, specialist_name);
 
     filled_card.mtype = filled_card.triage;
     
@@ -219,8 +275,7 @@ int main(){
     }
 
     if(filled_card.sdoc_dec == -1) {
-        LOG_PRINTF("|PATIENT %d| Specialist %s is unavailable, leaving hospital%s.",
-                   patient_id, specialist_name, has_guardian ? " (with guardian)" : "");
+        LOG_PRINTF("|PATIENT %d| Specialist is unavailable, leaving hospital.", patient_id);
         
         sem_release(sem_specialist);
         
@@ -231,12 +286,18 @@ int main(){
                 sem_release(sem_gen);
             }
         }
+        
+        if(has_guardian==1) {
+            pthread_mutex_lock(&guardian_mutex);
+            patient_done = 1;
+            pthread_cond_signal(&guardian_cond);
+            pthread_mutex_unlock(&guardian_mutex);
+            pthread_join(guardian_tid, NULL);
+        }
         return 0;
     }
 
-    LOG_PRINTF("|PATIENT %d| Treatment by %s completed, decision=%d%s", 
-               patient_id, specialist_name, filled_card.sdoc_dec,
-               has_guardian ? " (with guardian)" : "");
+    LOG_PRINTF("|PATIENT %d| Treatment by %s completed, decision=%d",patient_id, specialist_name, filled_card.sdoc_dec);
 
     key_t key_sem_gen_end = ftok(FTOK_PATH, ID_SEM_GEN);
     if(key_sem_gen_end != -1) {
@@ -246,7 +307,17 @@ int main(){
         }
     }
 
-    LOG_PRINTF("|PATIENT %d| Leaving hospital%s.", patient_id,
-               has_guardian ? " (with guardian)" : "");
+    LOG_PRINTF("|PATIENT %d| Leaving hospital.", patient_id);
+    
+    if(has_guardian==1) {
+        pthread_mutex_lock(&guardian_mutex);
+        patient_done = 1;
+        pthread_cond_signal(&guardian_cond);
+        pthread_mutex_unlock(&guardian_mutex);
+        pthread_join(guardian_tid, NULL);
+        pthread_mutex_destroy(&guardian_mutex);
+        pthread_cond_destroy(&guardian_cond);
+    }
+    
     return 0;
 }
